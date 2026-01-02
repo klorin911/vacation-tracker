@@ -1,0 +1,85 @@
+@page "/login"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Components.Authorization
+@using VacationTracker.Auth
+@using VacationTracker.Services
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager NavigationManager
+@inject IUserService UserService
+
+<div class="d-flex justify-content-center align-items-center" style="min-height: 70vh;">
+    <div class="form-card" style="min-width: min(420px, 92vw);">
+        <div class="mb-4 text-center">
+            <div class="chip mb-3">Welcome back</div>
+            <h3 class="mb-1">Log in to VacationTracker</h3>
+            <p class="subtle-text mb-0">Use your work email to continue.</p>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Email address</label>
+            <input type="email" @bind="_email" class="form-control" placeholder="user@example.com" />
+        </div>
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <div class="alert alert-danger">@_errorMessage</div>
+        }
+        <button type="button" class="btn btn-primary w-100" @onclick="HandleLogin" disabled="@_isLoggingIn">
+            @if (_isLoggingIn)
+            {
+                <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+                <span>Logging in...</span>
+            }
+            else
+            {
+                <span>Login</span>
+            }
+        </button>
+        <div class="mt-3 text-muted small">
+            <p>Tip: In this demo, any email that exists in the DB will work. For the first run, we'll need to seed data.</p>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string _email = "";
+    private string _errorMessage = "";
+    private bool _isLoggingIn;
+
+    private async Task HandleLogin()
+    {
+        _errorMessage = "";
+        _isLoggingIn = true;
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(_email))
+            {
+                _errorMessage = "Email is required.";
+                return;
+            }
+
+            var user = await UserService.GetUserByEmailAsync(_email);
+            if (user == null)
+            {
+                _errorMessage = "User not found. Please ensure data is seeded.";
+                return;
+            }
+
+            if (AuthStateProvider is not CustomAuthStateProvider customAuthStateProvider)
+            {
+                _errorMessage = "Auth provider is not configured correctly. (Expected CustomAuthStateProvider)";
+                return;
+            }
+
+            await customAuthStateProvider.UpdateAuthenticationState(_email);
+            NavigationManager.NavigateTo("/dashboard");
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Login failed: {ex.Message}";
+        }
+        finally
+        {
+            _isLoggingIn = false;
+        }
+    }
+}

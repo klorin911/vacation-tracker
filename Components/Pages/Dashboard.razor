@@ -1,0 +1,184 @@
+@page "/dashboard"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using VacationTracker.Data.Entities
+@using VacationTracker.Services
+@using VacationTracker.Components.Shared
+@attribute [Authorize]
+@inject IVacationService VacationService
+@inject IUserService UserService
+@inject AuthenticationStateProvider AuthStateProvider
+
+<div class="app-section">
+    <div class="app-toolbar">
+        <div>
+            <h2 class="page-title mb-1">Dashboard</h2>
+            <p class="subtle-text mb-0">Manage your vacation requests and view team availability.</p>
+        </div>
+        <div class="app-toolbar__actions">
+            <button class="btn btn-surface" type="button">Current Week</button>
+            <button class="btn btn-surface" @onclick="() => _showRequestModal = true">
+                <i class="bi bi-plus-lg"></i> New Request
+            </button>
+        </div>
+    </div>
+
+    @if (_user != null)
+    {
+        <div class="row g-3">
+            <div class="col-md-4">
+                <div class="stat-card h-100">
+                    <div class="stat-card__label">Total Quota</div>
+                    <div class="stat-card__value">@_user.TotalQuota Days</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stat-card h-100">
+                    <div class="stat-card__label">Days Used</div>
+                    <div class="stat-card__value text-success">@_usedDays Days</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stat-card h-100">
+                    <div class="stat-card__label">Remaining</div>
+                    <div class="stat-card__value text-primary">@(_user.TotalQuota - _usedDays) Days</div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="data-panel">
+        <Calendar Requests="_allRequests" OnDateSelected="HandleDateSelected" />
+    </div>
+</div>
+
+@if (_showRequestModal)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title">New Vacation Request</h5>
+                    <button type="button" class="btn-close" @onclick="() => _showRequestModal = false"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrEmpty(_errorMessage))
+                    {
+                        <div class="alert alert-danger mb-3">@_errorMessage</div>
+                    }
+                    <div class="mb-3">
+                        <label class="form-label">Start Date</label>
+                        <input type="date" class="form-control" @bind="_newRequest.StartDate" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">End Date</label>
+                        <input type="date" class="form-control" @bind="_newRequest.EndDate" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Type</label>
+                        <select class="form-select" @bind="_newRequest.Type">
+                            @foreach (var type in Enum.GetValues<RequestType>())
+                            {
+                                <option value="@type">@type</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Comment (Optional)</label>
+                        <textarea class="form-control" @bind="_newRequest.Comment" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" @onclick="() => _showRequestModal = false">Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick="SubmitRequest" disabled="@_isSubmitting">
+                        @if (_isSubmitting)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1"></span>
+                        }
+                        Submit Request
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private User? _user;
+    private List<VacationRequest> _allRequests = new();
+    private int _usedDays = 0;
+    private bool _showRequestModal = false;
+    private VacationRequest _newRequest = new() { StartDate = DateTime.Today, EndDate = DateTime.Today };
+    private string _errorMessage = "";
+    private bool _isSubmitting = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var email = authState.User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
+
+        if (email != null)
+        {
+            _user = await UserService.GetUserByEmailAsync(email);
+            if (_user != null)
+            {
+                _newRequest.UserId = _user.Id;
+                await LoadData();
+            }
+        }
+    }
+
+    private async Task LoadData()
+    {
+        _allRequests = await VacationService.GetRequestsAsync();
+        if (_user != null)
+        {
+            var userRequests = await VacationService.GetRequestsByUserAsync(_user.Id);
+            _usedDays = userRequests
+                .Where(r => r.Status == Status.Approved && r.Type == RequestType.Vacation)
+                .Sum(r => (r.EndDate - r.StartDate).Days + 1);
+        }
+    }
+
+    private void HandleDateSelected(DateTime date)
+    {
+        _newRequest.StartDate = date;
+        _newRequest.EndDate = date;
+        _showRequestModal = true;
+    }
+
+    private async Task SubmitRequest()
+    {
+        if (_newRequest.EndDate < _newRequest.StartDate)
+        {
+            _errorMessage = "End date cannot be earlier than start date.";
+            return;
+        }
+
+        _isSubmitting = true;
+        _errorMessage = "";
+
+        try
+        {
+            var result = await VacationService.CreateRequestAsync(_newRequest);
+            if (result.Success)
+            {
+                _showRequestModal = false;
+                _newRequest = new() { StartDate = DateTime.Today, EndDate = DateTime.Today, UserId = _user!.Id };
+                await LoadData();
+            }
+            else
+            {
+                _errorMessage = result.Message;
+            }
+        }
+        catch (Exception)
+        {
+            _errorMessage = "An error occurred while submitting your request.";
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+}

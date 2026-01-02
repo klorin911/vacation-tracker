@@ -1,0 +1,54 @@
+﻿@using System.Security.Claims
+@using VacationTracker.Components.Shared
+
+<div class="app-nav">
+    <div class="app-nav__inner">
+        <a class="app-brand" href="">VacationTracker</a>
+
+        <input type="checkbox" id="nav-toggle" class="app-nav__toggle" />
+        <label for="nav-toggle" class="app-nav__toggle-btn" aria-label="Toggle navigation">
+            <span></span>
+            <span></span>
+            <span></span>
+        </label>
+
+        <nav class="app-nav__links">
+            <NavLink class="app-nav__link" href="" Match="NavLinkMatch.All">Home</NavLink>
+
+            <AuthorizeView>
+                <Authorized>
+                    <NavLink class="app-nav__link" href="dashboard">Dashboard</NavLink>
+                    <AuthorizeView Roles="Admin" Context="adminContext">
+                        <NavLink class="app-nav__link" href="admin">Admin</NavLink>
+                    </AuthorizeView>
+                </Authorized>
+                <NotAuthorized>
+                    <NavLink class="app-nav__link app-nav__link--cta" href="login">Login</NavLink>
+                </NotAuthorized>
+            </AuthorizeView>
+        </nav>
+
+        <div class="app-nav__actions">
+            <ThemeToggle />
+            <AuthorizeView Context="authContext">
+                <Authorized>
+                    @{
+                        var displayName = authContext.User.Identity?.Name
+                            ?? authContext.User.FindFirst(ClaimTypes.Email)?.Value
+                            ?? "Account";
+                        var initial = displayName.Length > 0 ? displayName.Substring(0, 1).ToUpperInvariant() : "U";
+                    }
+                    <details class="app-nav__dropdown">
+                        <summary class="app-nav__user">
+                            <span class="app-nav__avatar">@initial</span>
+                            <span class="app-nav__user-name">@displayName</span>
+                        </summary>
+                        <div class="app-nav__menu">
+                            <a class="app-nav__menu-item" href="logout">Logout</a>
+                        </div>
+                    </details>
+                </Authorized>
+            </AuthorizeView>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,14 @@
+@page "/logout"
+@using Microsoft.AspNetCore.Components.Authorization
+@using VacationTracker.Auth
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager NavigationManager
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        var customAuthStateProvider = (CustomAuthStateProvider)AuthStateProvider;
+        await customAuthStateProvider.UpdateAuthenticationState(null);
+        NavigationManager.NavigateTo("/");
+    }
+}

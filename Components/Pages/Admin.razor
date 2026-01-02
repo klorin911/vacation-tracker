@@ -1,0 +1,152 @@
+@page "/admin"
+@using Microsoft.AspNetCore.Authorization
+@using VacationTracker.Data.Entities
+@using VacationTracker.Services
+@attribute [Authorize(Roles = "Admin")]
+@inject IVacationService VacationService
+@inject IUserService UserService
+
+<div class="app-section">
+    <div class="app-toolbar">
+        <div>
+            <h2 class="page-title mb-1">Admin Panel</h2>
+            <p class="subtle-text mb-0">Review and manage all vacation requests.</p>
+        </div>
+        <div class="app-toolbar__actions">
+            <span class="chip">Requests @(_allRequests.Count)</span>
+        </div>
+    </div>
+
+    <div class="table-surface">
+        <div class="px-4 py-3 border-bottom">
+            <h5 class="mb-0">Pending Requests</h5>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th class="ps-4">Employee</th>
+                        <th>Period</th>
+                        <th>Days</th>
+                        <th>Type</th>
+                        <th>Comment</th>
+                        <th class="text-end pe-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!_pendingRequests.Any())
+                    {
+                        <tr>
+                            <td colspan="6" class="text-center py-4 text-muted">No pending requests.</td>
+                        </tr>
+                    }
+                    @foreach (var request in _pendingRequests)
+                    {
+                        <tr>
+                            <td class="ps-4">
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px; font-size: 0.8rem;">
+                                        @request.User.Name[0]
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold">@request.User.Name</div>
+                                        <div class="small text-muted">@request.User.Email</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                @request.StartDate.ToShortDateString() - @request.EndDate.ToShortDateString()
+                            </td>
+                            <td>@((request.EndDate - request.StartDate).Days + 1)</td>
+                            <td><span class="badge bg-info text-dark">@request.Type</span></td>
+                            <td class="text-truncate" style="max-width: 200px;" title="@request.Comment">
+                                @request.Comment
+                            </td>
+                            <td class="text-end pe-4">
+                                <button class="btn btn-sm btn-success me-1" @onclick="() => UpdateStatus(request.Id, Status.Approved)">Approve</button>
+                                <button class="btn btn-sm btn-danger" @onclick="() => UpdateStatus(request.Id, Status.Rejected)">Reject</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="table-surface">
+        <div class="px-4 py-3 border-bottom">
+            <h5 class="mb-0">Request History</h5>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th class="ps-4">Employee</th>
+                        <th>Period</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th class="text-end pe-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var request in _historyRequests)
+                    {
+                        <tr>
+                            <td class="ps-4">@request.User.Name</td>
+                            <td>@request.StartDate.ToShortDateString() - @request.EndDate.ToShortDateString()</td>
+                            <td>@request.Type</td>
+                            <td>
+                                <span class="badge @GetStatusBadgeClass(request.Status)">@request.Status</span>
+                            </td>
+                            <td class="text-end pe-4">
+                                <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteRequest(request.Id)">Delete</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<VacationRequest> _allRequests = new();
+    private List<VacationRequest> _pendingRequests => _allRequests.Where(r => r.Status == Status.Pending).ToList();
+    private List<VacationRequest> _historyRequests => _allRequests.Where(r => r.Status != Status.Pending).OrderByDescending(r => r.CreatedAt).ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _allRequests = await VacationService.GetRequestsAsync();
+    }
+
+    private async Task UpdateStatus(int requestId, Status status)
+    {
+        if (await VacationService.UpdateStatusAsync(requestId, status))
+        {
+            await LoadData();
+        }
+    }
+
+    private async Task DeleteRequest(int requestId)
+    {
+        if (await VacationService.DeleteRequestAsync(requestId))
+        {
+            await LoadData();
+        }
+    }
+
+    private string GetStatusBadgeClass(Status status)
+    {
+        return status switch
+        {
+            Status.Approved => "bg-success",
+            Status.Rejected => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+}

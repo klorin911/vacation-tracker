@@ -1,0 +1,216 @@
+.app-nav {
+    background: linear-gradient(180deg, var(--navy-900) 0%, var(--navy-800) 100%);
+    color: white;
+    box-shadow: 0 14px 30px rgba(9, 15, 28, 0.25);
+}
+
+.app-nav__inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0.9rem 1.5rem;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 1.5rem;
+    align-items: center;
+}
+
+.app-brand {
+    font-weight: 700;
+    font-size: 1.1rem;
+    letter-spacing: 0.02em;
+    color: white;
+    text-decoration: none;
+}
+
+.app-nav__links {
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+}
+
+.app-nav__link,
+.app-nav__link:visited {
+    color: white;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.95rem;
+    padding-bottom: 0.3rem;
+    border-bottom: 2px solid transparent;
+}
+
+.app-nav__link.active {
+    color: white;
+    border-bottom-color: var(--accent-500);
+}
+
+.app-nav__link:hover {
+    color: white;
+    border-bottom-color: rgba(255, 255, 255, 0.8);
+}
+
+.app-nav__link--cta {
+    color: white;
+    background: var(--accent-600);
+    padding: 0.4rem 1rem;
+    border-radius: 999px;
+}
+
+.app-nav__actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    justify-self: end;
+}
+
+.app-nav__actions .btn {
+    border-radius: 999px;
+    padding: 0.35rem 0.85rem;
+    font-size: 0.85rem;
+    border-color: rgba(255, 255, 255, 0.2);
+    color: var(--navy-900);
+    background: white;
+    box-shadow: 0 8px 18px rgba(9, 15, 28, 0.25);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.app-nav__actions .btn-outline-secondary {
+    background: white;
+}
+
+.app-nav__actions .btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 22px rgba(9, 15, 28, 0.3);
+}
+
+.app-nav__user {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    list-style: none;
+}
+
+.app-nav__avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+    display: grid;
+    place-items: center;
+    font-weight: 700;
+    color: white;
+}
+
+.app-nav__dropdown {
+    position: relative;
+}
+
+.app-nav__dropdown summary::-webkit-details-marker {
+    display: none;
+}
+
+.app-nav__dropdown[open] .app-nav__menu {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+.app-nav__menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 0.6rem);
+    min-width: 160px;
+    background: white;
+    border-radius: 12px;
+    padding: 0.5rem;
+    border: 1px solid rgba(15, 31, 59, 0.1);
+    box-shadow: 0 16px 30px rgba(9, 15, 28, 0.2);
+    opacity: 0;
+    transform: translateY(-6px);
+    pointer-events: none;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+    z-index: 20;
+}
+
+.app-nav__menu-item {
+    display: block;
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+    text-decoration: none;
+    color: var(--ink-900);
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.app-nav__menu-item:hover {
+    background: #f3f6ff;
+}
+
+.app-nav__toggle {
+    display: none;
+}
+
+.app-nav__toggle-btn {
+    display: none;
+    flex-direction: column;
+    gap: 4px;
+    cursor: pointer;
+}
+
+.app-nav__toggle-btn span {
+    width: 22px;
+    height: 2px;
+    background: white;
+    border-radius: 999px;
+}
+
+@media (max-width: 900px) {
+    .app-nav__inner {
+        grid-template-columns: auto auto;
+        grid-template-rows: auto auto;
+    }
+
+    .app-nav__links {
+        grid-column: 1 / -1;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-top: 0.4rem;
+    }
+}
+
+@media (max-width: 720px) {
+    .app-nav__inner {
+        grid-template-columns: auto auto;
+        gap: 0.75rem;
+    }
+
+    .app-nav__toggle-btn {
+        display: flex;
+        justify-self: end;
+    }
+
+    .app-nav__links {
+        display: none;
+        flex-direction: column;
+        align-items: flex-start;
+        background: rgba(9, 15, 28, 0.8);
+        padding: 0.75rem 1rem;
+        border-radius: var(--radius-md);
+    }
+
+    .app-nav__toggle:checked ~ .app-nav__links {
+        display: flex;
+    }
+
+    .app-nav__actions {
+        grid-column: 1 / -1;
+        justify-content: space-between;
+    }
+
+    .app-nav__user-name {
+        display: none;
+    }
+}
