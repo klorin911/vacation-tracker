@@ -1,8 +1,33 @@
 @inject IJSRuntime JSRuntime
 
-<button @onclick="ToggleTheme" class="btn btn-outline-secondary">
-    @(_isDarkMode ? "🌙 Dark" : "☀️ Light")
+<button @onclick="ToggleTheme" class="btn btn-outline-secondary theme-toggle-btn" aria-label="Toggle theme">
+    @if (_isDarkMode)
+    {
+        <i class="bi bi-moon-stars-fill me-2"></i> <span>Dark</span>
+    }
+    else
+    {
+        <i class="bi bi-sun-fill me-2"></i> <span>Light</span>
+    }
 </button>
+
+<style>
+    .theme-toggle-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 90px;
+        border-radius: var(--radius-md);
+        font-weight: 600;
+        font-size: 0.8rem;
+        padding: 0.4rem 0.75rem;
+        transition: all 0.2s ease;
+    }
+    
+    .theme-toggle-btn i {
+        font-size: 1rem;
+    }
+</style>
 
 @code {
     private bool _isDarkMode;
@@ -12,7 +37,16 @@
         if (firstRender)
         {
             var theme = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "theme");
-            _isDarkMode = theme == "dark";
+            if (string.IsNullOrEmpty(theme))
+            {
+                // Respect system preference
+                var systemDark = await JSRuntime.InvokeAsync<bool>("eval", "window.matchMedia('(prefers-color-scheme: dark)').matches");
+                _isDarkMode = systemDark;
+            }
+            else
+            {
+                _isDarkMode = theme == "dark";
+            }
             await ApplyTheme();
             StateHasChanged();
         }
@@ -27,9 +61,8 @@
 
     private async Task ApplyTheme()
     {
-        await JSRuntime.InvokeVoidAsync(
-            "document.documentElement.setAttribute",
-            "data-bs-theme",
-            _isDarkMode ? "dark" : "light");
+        var themeName = _isDarkMode ? "dark" : "light";
+        await JSRuntime.InvokeVoidAsync("document.documentElement.setAttribute", "data-theme", themeName);
+        await JSRuntime.InvokeVoidAsync("document.documentElement.setAttribute", "data-bs-theme", themeName);
     }
 }
