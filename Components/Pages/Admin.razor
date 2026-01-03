@@ -111,8 +111,8 @@
 
 @code {
     private List<VacationRequest> _allRequests = new();
-    private List<VacationRequest> _pendingRequests => _allRequests.Where(r => r.Status == Status.Pending).ToList();
-    private List<VacationRequest> _historyRequests => _allRequests.Where(r => r.Status != Status.Pending).OrderByDescending(r => r.CreatedAt).ToList();
+    private List<VacationRequest> _pendingRequests = new();
+    private List<VacationRequest> _historyRequests = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -122,6 +122,13 @@
     private async Task LoadData()
     {
         _allRequests = await VacationService.GetRequestsAsync();
+        _pendingRequests = _allRequests
+            .Where(r => r.Status == Status.Pending)
+            .ToList();
+        _historyRequests = _allRequests
+            .Where(r => r.Status != Status.Pending)
+            .OrderByDescending(r => r.CreatedAt)
+            .ToList();
     }
 
     private async Task UpdateStatus(int requestId, Status status)

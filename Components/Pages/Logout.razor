@@ -7,8 +7,10 @@
 @code {
     protected override async Task OnInitializedAsync()
     {
-        var customAuthStateProvider = (CustomAuthStateProvider)AuthStateProvider;
-        await customAuthStateProvider.UpdateAuthenticationState(null);
+        if (AuthStateProvider is CustomAuthStateProvider customAuthStateProvider)
+        {
+            await customAuthStateProvider.UpdateAuthenticationState(null);
+        }
         NavigationManager.NavigateTo("/");
     }
 }

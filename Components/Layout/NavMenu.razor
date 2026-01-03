@@ -15,9 +15,9 @@
 
         <nav class="app-nav__links">
             <AuthorizeView>
-                <Authorized>
+                <Authorized Context="navContext">
                     <NavLink class="app-nav__link" href="dashboard">Dashboard</NavLink>
-                    <AuthorizeView Roles="Admin" Context="adminContext">
+                    <AuthorizeView Roles="Admin">
                         <NavLink class="app-nav__link" href="admin">Admin</NavLink>
                     </AuthorizeView>
                 </Authorized>

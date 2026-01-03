@@ -141,7 +141,6 @@
     }
 
     private User? _user;
-    private List<VacationRequest> _allRequests = new();
     private List<VacationRequest> _userRequests = new();
     private List<VacationRequest> _userWeekReservations = new();
     private List<VacationRequest> _userDayReservations = new();
@@ -175,7 +174,6 @@
 
     private async Task LoadData()
     {
-        _allRequests = await VacationService.GetRequestsAsync();
         if (_user != null)
         {
             _userRequests = await VacationService.GetRequestsByUserAsync(_user.Id);

@@ -48,21 +48,23 @@ public class VacationService : IVacationService
 
     public async Task<(int Taken, int Total)> GetAvailabilityAsync(DateTime date)
     {
+        var targetDate = date.Date;
         var taken = await _context.VacationRequests
             .AsNoTracking()
-            .Where(r => r.Status == Status.Approved && !r.IsWeekBooking && r.StartDate.Date <= date.Date && r.EndDate.Date >= date.Date)
+            .Where(r => r.Status == Status.Approved && !r.IsWeekBooking && r.StartDate.Date <= targetDate && r.EndDate.Date >= targetDate)
             .CountAsync();
         return (taken, MaxDailyVacations);
     }
 
     public async Task<(int Taken, int Total)> GetWeekAvailabilityAsync(DateTime monday)
     {
-        var sunday = monday.AddDays(6);
+        var weekStart = GetWeekStart(monday);
+        var weekEnd = weekStart.AddDays(6);
         // A week is considered "taken" if a user has a week-booking request that overlaps that week.
         var taken = await _context.VacationRequests
             .AsNoTracking()
             .Where(r => r.Status == Status.Approved && r.IsWeekBooking &&
-                        ((r.StartDate.Date <= sunday.Date && r.EndDate.Date >= monday.Date)))
+                        ((r.StartDate.Date <= weekEnd && r.EndDate.Date >= weekStart)))
             .Select(r => r.UserId)
             .Distinct()
             .CountAsync();
@@ -123,8 +125,7 @@ public class VacationService : IVacationService
         }
         else
         {
-            var startMonday = request.StartDate.AddDays(-(int)request.StartDate.DayOfWeek + (int)DayOfWeek.Monday);
-            if (request.StartDate.DayOfWeek == DayOfWeek.Sunday) startMonday = request.StartDate.AddDays(-6);
+            var startMonday = GetWeekStart(request.StartDate);
 
             var (taken, total) = await GetWeekAvailabilityAsync(startMonday);
             if (taken >= total)
@@ -205,14 +206,13 @@ public class VacationService : IVacationService
         }
         else
         {
-            var startMonday = startDate.AddDays(-(int)startDate.DayOfWeek + (int)DayOfWeek.Monday);
-            if (startDate.DayOfWeek == DayOfWeek.Sunday) startMonday = startDate.AddDays(-6);
+            var startMonday = GetWeekStart(startDate);
             var sunday = startMonday.AddDays(6);
 
             var taken = await _context.VacationRequests
                 .AsNoTracking()
                 .Where(r => r.Id != requestId && r.Status == Status.Approved && r.IsWeekBooking &&
-                            ((r.StartDate.Date <= sunday.Date && r.EndDate.Date >= startMonday.Date)))
+                            ((r.StartDate.Date <= sunday && r.EndDate.Date >= startMonday)))
                 .Select(r => r.UserId)
                 .Distinct()
                 .CountAsync();
@@ -258,5 +258,12 @@ public class VacationService : IVacationService
         _context.VacationRequests.Remove(request);
         await _context.SaveChangesAsync();
         return true;
+    }
+
+    private static DateTime GetWeekStart(DateTime date)
+    {
+        var day = date.Date;
+        var diff = (7 + (int)day.DayOfWeek - (int)DayOfWeek.Monday) % 7;
+        return day.AddDays(-diff);
     }
 }

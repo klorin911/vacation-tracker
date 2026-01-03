@@ -7,7 +7,6 @@ namespace VacationTracker.Services;
 public interface IUserService
 {
     Task<User?> GetUserByEmailAsync(string email);
-    Task<List<User>> GetAllUsersAsync();
 }
 
 public class UserService : IUserService
@@ -23,15 +22,6 @@ public class UserService : IUserService
     {
         return await _context.Users
             .AsNoTracking()
-            .Include(u => u.VacationRequests)
             .FirstOrDefaultAsync(u => u.Email == email);
-    }
-
-    public async Task<List<User>> GetAllUsersAsync()
-    {
-        return await _context.Users
-            .AsNoTracking()
-            .Include(u => u.VacationRequests)
-            .ToListAsync();
     }
 }
