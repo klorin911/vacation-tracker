@@ -8,6 +8,8 @@ public interface IVacationService
 {
     Task<List<VacationRequest>> GetRequestsAsync();
     Task<List<VacationRequest>> GetRequestsByUserAsync(int userId);
+    Task<(int Taken, int Total)> GetAvailabilityAsync(DateTime date);
+    Task<(int Taken, int Total)> GetWeekAvailabilityAsync(DateTime monday);
     Task<(bool Success, string Message)> CreateRequestAsync(VacationRequest request);
     Task<bool> UpdateStatusAsync(int requestId, Status status);
     Task<bool> DeleteRequestAsync(int requestId);
@@ -16,7 +18,8 @@ public interface IVacationService
 public class VacationService : IVacationService
 {
     private readonly ApplicationDbContext _context;
-    private const int MaxConcurrentVacations = 3; // Example capacity limit
+    private const int MaxWeeklyVacations = 5;
+    private const int MaxDailyVacations = 1;
 
     public VacationService(ApplicationDbContext context)
     {
@@ -41,6 +44,30 @@ public class VacationService : IVacationService
             .ToListAsync();
     }
 
+    public async Task<(int Taken, int Total)> GetAvailabilityAsync(DateTime date)
+    {
+        var taken = await _context.VacationRequests
+            .AsNoTracking()
+            .Where(r => r.Status == Status.Approved && !r.IsWeekBooking && r.StartDate.Date <= date.Date && r.EndDate.Date >= date.Date)
+            .CountAsync();
+        return (taken, MaxDailyVacations);
+    }
+
+    public async Task<(int Taken, int Total)> GetWeekAvailabilityAsync(DateTime monday)
+    {
+        var sunday = monday.AddDays(6);
+        // A week is considered "taken" if a user has a week-booking request that overlaps that week.
+        var taken = await _context.VacationRequests
+            .AsNoTracking()
+            .Where(r => r.Status == Status.Approved && r.IsWeekBooking &&
+                        ((r.StartDate.Date <= sunday.Date && r.EndDate.Date >= monday.Date)))
+            .Select(r => r.UserId)
+            .Distinct()
+            .CountAsync();
+            
+        return (taken, MaxWeeklyVacations);
+    }
+
     public async Task<(bool Success, string Message)> CreateRequestAsync(VacationRequest request)
     {
         // 1. Quota Validation
@@ -51,27 +78,45 @@ public class VacationService : IVacationService
 
         if (user == null) return (false, "User not found.");
 
-        var requestedDays = (request.EndDate - request.StartDate).Days + 1;
-        var approvedDays = user.VacationRequests
-            .Where(r => r.Status == Status.Approved && r.Type == RequestType.Vacation)
-            .Sum(r => (r.EndDate - r.StartDate).Days + 1);
-
-        if (approvedDays + requestedDays > user.TotalQuota)
+        if (request.IsWeekBooking)
         {
-            return (false, $"Request exceeds your remaining quota. You have {user.TotalQuota - approvedDays} days left.");
+            var approvedWeeks = user.VacationRequests
+                .Count(r => r.Status == Status.Approved && r.Type == RequestType.Vacation && r.IsWeekBooking);
+
+            if (approvedWeeks + 1 > user.WeekQuota)
+            {
+                return (false, $"Request exceeds your weekly quota. You have {user.WeekQuota - approvedWeeks} weeks left.");
+            }
+        }
+        else
+        {
+            var approvedDays = user.VacationRequests
+                .Count(r => r.Status == Status.Approved && r.Type == RequestType.Vacation && !r.IsWeekBooking);
+
+            if (approvedDays + 1 > user.DayQuota)
+            {
+                return (false, $"Request exceeds your single day quota. You have {user.DayQuota - approvedDays} days left.");
+            }
         }
 
-        // 2. Capacity Validation (Simple check: max 3 people per day)
-        for (var date = request.StartDate; date <= request.EndDate; date = date.AddDays(1))
+        // 2. Capacity Validation
+        if (!request.IsWeekBooking)
         {
-            var concurrentCount = await _context.VacationRequests
-                .AsNoTracking()
-                .Where(r => r.Status == Status.Approved && r.StartDate <= date && r.EndDate >= date)
-                .CountAsync();
-
-            if (concurrentCount >= MaxConcurrentVacations)
+            var (taken, total) = await GetAvailabilityAsync(request.StartDate);
+            if (taken >= total)
             {
-                return (false, $"Capacity reached on {date.ToShortDateString()}. Max {MaxConcurrentVacations} people allowed.");
+                return (false, $"Capacity reached for {request.StartDate.ToShortDateString()}. Max {total} person allowed for single days.");
+            }
+        }
+        else
+        {
+            var startMonday = request.StartDate.AddDays(-(int)request.StartDate.DayOfWeek + (int)DayOfWeek.Monday);
+            if (request.StartDate.DayOfWeek == DayOfWeek.Sunday) startMonday = request.StartDate.AddDays(-6);
+
+            var (taken, total) = await GetWeekAvailabilityAsync(startMonday);
+            if (taken >= total)
+            {
+                return (false, $"Weekly capacity reached for the week of {startMonday.ToShortDateString()}. Max {total} employees allowed.");
             }
         }
 

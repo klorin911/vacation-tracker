@@ -36,21 +36,24 @@ using (var scope = app.Services.CreateScope())
             Email = "kylerlorin@gmail.com",
             Name = "Kyler Lorin",
             Role = VacationTracker.Data.Entities.Role.Admin,
-            TotalQuota = 30
+            WeekQuota = 2,
+            DayQuota = 2
         });
         context.Users.Add(new VacationTracker.Data.Entities.User
         {
             Email = "admin@example.com",
             Name = "Admin User",
             Role = VacationTracker.Data.Entities.Role.Admin,
-            TotalQuota = 30
+            WeekQuota = 5,
+            DayQuota = 5
         });
         context.Users.Add(new VacationTracker.Data.Entities.User
         {
             Email = "user@example.com",
             Name = "Normal User",
             Role = VacationTracker.Data.Entities.Role.User,
-            TotalQuota = 25
+            WeekQuota = 5,
+            DayQuota = 5
         });
         context.SaveChanges();
     }

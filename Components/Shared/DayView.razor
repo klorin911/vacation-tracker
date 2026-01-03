@@ -1,0 +1,184 @@
+@using VacationTracker.Services
+@using VacationTracker.Data.Entities
+@inject IVacationService VacationService
+
+<div class="day-view">
+    <div class="month-nav d-flex align-items-center justify-content-between mb-4">
+        <button class="btn btn-icon" @onclick="PrevMonth"><i class="bi bi-chevron-left"></i></button>
+        <h4 class="mb-0">@_currentMonth.ToString("MMMM yyyy")</h4>
+        <button class="btn btn-icon" @onclick="NextMonth"><i class="bi bi-chevron-right"></i></button>
+    </div>
+
+    <div class="days-grid">
+        <div class="day-header">Mon</div>
+        <div class="day-header">Tue</div>
+        <div class="day-header">Wed</div>
+        <div class="day-header">Thu</div>
+        <div class="day-header">Fri</div>
+        <div class="day-header">Sat</div>
+        <div class="day-header">Sun</div>
+
+        @foreach (var day in _days)
+        {
+            <div class="day-cell @GetDayClass(day)" @onclick="() => SelectDay(day)">
+                <div class="day-number">@day.Date.Day</div>
+                @if (day.IsInMonth)
+                {
+                    <div class="day-status">
+                        @if (day.IsTaken)
+                        {
+                            <span class="status-dot taken" title="Taken"></span>
+                            <small class="status-text text-danger">Taken</small>
+                        }
+                        else
+                        {
+                            <span class="status-dot available" title="Available"></span>
+                            <small class="status-text text-success">Available</small>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public EventCallback<DateTime> OnDaySelected { get; set; }
+
+    private DateTime _currentMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private List<DayInfo> _days = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDays();
+    }
+
+    private async Task LoadDays()
+    {
+        _days.Clear();
+        var firstDayOfMonth = _currentMonth;
+        var startDay = firstDayOfMonth.AddDays(-(int)firstDayOfMonth.DayOfWeek + (int)DayOfWeek.Monday);
+        if (firstDayOfMonth.DayOfWeek == DayOfWeek.Sunday) startDay = firstDayOfMonth.AddDays(-6);
+
+        for (int i = 0; i < 42; i++) // 6 weeks
+        {
+            var date = startDay.AddDays(i);
+            var isInMonth = date.Month == _currentMonth.Month;
+            var isTaken = false;
+            
+            if (isInMonth)
+            {
+                var (taken, total) = await VacationService.GetAvailabilityAsync(date);
+                isTaken = taken >= total;
+            }
+
+            _days.Add(new DayInfo
+            {
+                Date = date,
+                IsInMonth = isInMonth,
+                IsTaken = isTaken
+            });
+        }
+    }
+
+    private async Task PrevMonth()
+    {
+        _currentMonth = _currentMonth.AddMonths(-1);
+        await LoadDays();
+    }
+
+    private async Task NextMonth()
+    {
+        _currentMonth = _currentMonth.AddMonths(1);
+        await LoadDays();
+    }
+
+    private void SelectDay(DayInfo day)
+    {
+        if (day.IsInMonth && !day.IsTaken)
+        {
+            OnDaySelected.InvokeAsync(day.Date);
+        }
+    }
+
+    private string GetDayClass(DayInfo day)
+    {
+        var classes = new List<string>();
+        if (!day.IsInMonth) classes.Add("outside");
+        if (day.IsTaken) classes.Add("taken-cell");
+        if (day.Date == DateTime.Today) classes.Add("today");
+        return string.Join(" ", classes);
+    }
+
+    private class DayInfo
+    {
+        public DateTime Date { get; set; }
+        public bool IsInMonth { get; set; }
+        public bool IsTaken { get; set; }
+    }
+}
+
+<style>
+    .days-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 1px;
+        background: var(--border);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        overflow: hidden;
+    }
+    .day-header {
+        background: var(--surface-2);
+        padding: 0.75rem;
+        text-align: center;
+        font-weight: 700;
+        font-size: 0.8rem;
+        color: var(--ink-500);
+        text-transform: uppercase;
+    }
+    .day-cell {
+        background: var(--surface);
+        min-height: 80px;
+        padding: 0.5rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    .day-cell:hover:not(.outside):not(.taken-cell) {
+        background: var(--surface-3);
+    }
+    .day-cell.outside {
+        background: var(--surface-2);
+        opacity: 0.3;
+        cursor: default;
+    }
+    .day-cell.taken-cell {
+        background: var(--surface-2);
+        cursor: not-allowed;
+    }
+    .day-cell.today {
+        border: 2px solid var(--accent-500);
+        z-index: 1;
+    }
+    .day-number {
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+    .day-status {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.25rem;
+    }
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+    }
+    .status-dot.available { background: var(--success); }
+    .status-dot.taken { background: var(--danger); }
+    .status-text { font-size: 0.7rem; font-weight: 600; }
+</style>

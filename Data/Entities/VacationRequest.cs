@@ -14,6 +14,8 @@ public class VacationRequest
 
     public RequestType Type { get; set; } = RequestType.Vacation;
 
+    public bool IsWeekBooking { get; set; }
+
     public Status Status { get; set; } = Status.Pending;
 
     public string? Comment { get; set; }

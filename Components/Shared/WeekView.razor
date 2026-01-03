@@ -1,0 +1,226 @@
+@using VacationTracker.Services
+@using VacationTracker.Data.Entities
+@inject IVacationService VacationService
+
+<div class="week-view">
+    <div class="month-nav d-flex align-items-center justify-content-between mb-4">
+        <button class="btn btn-icon" @onclick="PrevMonth"><i class="bi bi-chevron-left"></i></button>
+        <h4 class="mb-0">@_currentMonth.ToString("MMMM yyyy")</h4>
+        <button class="btn btn-icon" @onclick="NextMonth"><i class="bi bi-chevron-right"></i></button>
+    </div>
+
+    <div class="calendar-weeks-grid">
+        <div class="week-header">Week</div>
+        <div class="week-header">Mon</div>
+        <div class="week-header">Tue</div>
+        <div class="week-header">Wed</div>
+        <div class="week-header">Thu</div>
+        <div class="week-header">Fri</div>
+        <div class="week-header">Sat</div>
+        <div class="week-header">Sun</div>
+
+        @foreach (var week in _weeks)
+        {
+            <div class="week-row @(week.IsFull ? "full" : "")" @onclick="() => SelectWeek(week)">
+                <!-- Week Info Column -->
+                <div class="week-info-cell">
+                    <div class="week-number">W@(week.WeekNumber)</div>
+                    <div class="week-spots">
+                        <span class="badge @(week.IsFull ? "bg-danger" : "bg-success")">
+                            @week.Taken/@week.Total
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Days Columns -->
+                @foreach (var day in week.Days)
+                {
+                    <div class="day-cell @(day.Month != _currentMonth.Month ? "outside" : "") @(day.Date == DateTime.Today ? "today" : "")">
+                        <div class="day-number">@day.Day</div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public EventCallback<(DateTime Start, DateTime End)> OnWeekSelected { get; set; }
+    
+    private DateTime _currentMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private List<WeekInfo> _weeks = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadWeeks();
+    }
+
+    private async Task LoadWeeks()
+    {
+        _weeks.Clear();
+        var firstDayOfMonth = _currentMonth;
+        
+        // Find the first Monday
+        var startDay = firstDayOfMonth.AddDays(-(int)firstDayOfMonth.DayOfWeek + (int)DayOfWeek.Monday);
+        if (firstDayOfMonth.DayOfWeek == DayOfWeek.Sunday) startDay = firstDayOfMonth.AddDays(-6);
+
+        for (int i = 0; i < 6; i++) // Always show 6 weeks for consistency
+        {
+            var weekStart = startDay.AddDays(i * 7);
+            var weekEnd = weekStart.AddDays(6);
+            var (taken, total) = await VacationService.GetWeekAvailabilityAsync(weekStart);
+            
+            var days = new List<DateTime>();
+            for (int d = 0; d < 7; d++)
+            {
+                days.Add(weekStart.AddDays(d));
+            }
+
+            _weeks.Add(new WeekInfo
+            {
+                Start = weekStart,
+                End = weekEnd,
+                WeekNumber = GetIsoWeekNumber(weekStart),
+                Taken = taken,
+                Total = total,
+                Days = days
+            });
+        }
+    }
+
+    private async Task PrevMonth()
+    {
+        _currentMonth = _currentMonth.AddMonths(-1);
+        await LoadWeeks();
+    }
+
+    private async Task NextMonth()
+    {
+        _currentMonth = _currentMonth.AddMonths(1);
+        await LoadWeeks();
+    }
+
+    private void SelectWeek(WeekInfo week)
+    {
+        if (!week.IsFull)
+        {
+            OnWeekSelected.InvokeAsync((week.Start, week.End));
+        }
+    }
+
+    private int GetIsoWeekNumber(DateTime date)
+    {
+        var day = (int)System.Globalization.CultureInfo.InvariantCulture.Calendar.GetDayOfWeek(date);
+        return System.Globalization.CultureInfo.InvariantCulture.Calendar.GetWeekOfYear(date.AddDays(4 - (day == 0 ? 7 : day)), System.Globalization.CalendarWeekRule.FirstFourDayWeek, DayOfWeek.Monday);
+    }
+
+    private class WeekInfo
+    {
+        public DateTime Start { get; set; }
+        public DateTime End { get; set; }
+        public int WeekNumber { get; set; }
+        public int Taken { get; set; }
+        public int Total { get; set; }
+        public List<DateTime> Days { get; set; } = new();
+        public bool IsFull => Taken >= Total;
+    }
+}
+
+<style>
+    .calendar-weeks-grid {
+        display: grid;
+        grid-template-columns: 80px repeat(7, 1fr);
+        gap: 1px;
+        background: var(--border);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        overflow: hidden;
+    }
+
+    .week-header {
+        background: var(--surface-2);
+        padding: 0.75rem;
+        text-align: center;
+        font-weight: 700;
+        font-size: 0.8rem;
+        color: var(--ink-500);
+        text-transform: uppercase;
+    }
+
+    .week-row {
+        display: contents; /* Allows children to participate in the parent grid */
+        cursor: pointer;
+    }
+
+    .week-info-cell, .day-cell {
+        background: var(--surface);
+        min-height: 80px;
+        padding: 0.5rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        transition: background 0.2s;
+    }
+
+    .week-info-cell {
+        background: var(--surface-2);
+        justify-content: center;
+        border-right: 1px solid var(--border);
+    }
+
+    .week-number {
+        font-weight: 800;
+        font-size: 1.1rem;
+        color: var(--ink-900);
+    }
+
+    .week-spots {
+        margin-top: 0.25rem;
+    }
+
+    .day-number {
+        font-weight: 700;
+        color: var(--ink-700);
+    }
+
+    .day-cell.outside {
+        background: var(--surface-2);
+        opacity: 0.3;
+    }
+
+    .day-cell.today {
+        position: relative;
+    }
+    
+    .day-cell.today::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        border: 2px solid var(--accent-500);
+        pointer-events: none;
+    }
+
+    /* Row hover effect */
+    .week-row:hover .week-info-cell,
+    .week-row:hover .day-cell:not(.outside) {
+        background: var(--surface-3);
+    }
+
+    .week-row.full {
+        cursor: not-allowed;
+    }
+
+    .week-row.full .week-info-cell,
+    .week-row.full .day-cell {
+        background: var(--surface-2);
+        opacity: 0.6;
+    }
+
+    .badge {
+        font-size: 0.7rem;
+        padding: 0.25rem 0.5rem;
+    }
+</style>

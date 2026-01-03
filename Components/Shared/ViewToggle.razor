@@ -1,0 +1,34 @@
+<div class="view-toggle">
+    <div class="btn-group" role="group">
+        <button type="button" 
+                class="btn @(CurrentView == ViewMode.Week ? "btn-primary" : "btn-outline-primary")"
+                @onclick="() => SetView(ViewMode.Week)">
+            <i class="bi bi-calendar-range me-1"></i> Week View
+        </button>
+        <button type="button" 
+                class="btn @(CurrentView == ViewMode.Day ? "btn-primary" : "btn-outline-primary")"
+                @onclick="() => SetView(ViewMode.Day)">
+            <i class="bi bi-calendar-event me-1"></i> Day View
+        </button>
+    </div>
+</div>
+
+@code {
+    [Parameter] public ViewMode CurrentView { get; set; } = ViewMode.Week;
+    [Parameter] public EventCallback<ViewMode> OnViewChanged { get; set; }
+
+    public enum ViewMode
+    {
+        Week,
+        Day
+    }
+
+    private async Task SetView(ViewMode mode)
+    {
+        if (CurrentView != mode)
+        {
+            CurrentView = mode;
+            await OnViewChanged.InvokeAsync(mode);
+        }
+    }
+}

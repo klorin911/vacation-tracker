@@ -1,3 +1,4 @@
+@page "/"
 @page "/login"
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Components.Authorization
@@ -43,6 +44,15 @@
     private string _email = "";
     private string _errorMessage = "";
     private bool _isLoggingIn;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (authState.User.Identity?.IsAuthenticated == true)
+        {
+            NavigationManager.NavigateTo("/dashboard");
+        }
+    }
 
     private async Task HandleLogin()
     {

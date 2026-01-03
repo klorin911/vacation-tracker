@@ -1,4 +1,4 @@
-﻿@using System.Security.Claims
+@using System.Security.Claims
 @using VacationTracker.Components.Shared
 
 <div class="app-nav">
@@ -13,8 +13,6 @@
         </label>
 
         <nav class="app-nav__links">
-            <NavLink class="app-nav__link" href="" Match="NavLinkMatch.All">Home</NavLink>
-
             <AuthorizeView>
                 <Authorized>
                     <NavLink class="app-nav__link" href="dashboard">Dashboard</NavLink>

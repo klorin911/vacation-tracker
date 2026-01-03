@@ -1,0 +1,69 @@
+<div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold">Confirm Vacation Request</h5>
+                <button type="button" class="btn-close" @onclick="OnCancel"></button>
+            </div>
+            <div class="modal-body py-4">
+                @if (!string.IsNullOrEmpty(ErrorMessage))
+                {
+                    <div class="alert alert-danger mb-4">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        @ErrorMessage
+                    </div>
+                }
+                <div class="d-flex align-items-center mb-4">
+                    <div class="icon-circle bg-primary-subtle text-primary me-3">
+                        <i class="bi bi-calendar-check fs-4"></i>
+                    </div>
+                    <div>
+                        <p class="mb-0 text-muted">You are requesting vacation for:</p>
+                        <h5 class="mb-0 fw-bold">@DateRange</h5>
+                    </div>
+                </div>
+
+                <div class="alert alert-info border-0 mb-0">
+                    <div class="d-flex">
+                        <i class="bi bi-info-circle-fill me-2"></i>
+                        <div>
+                            <strong>Quick Note:</strong> This will be submitted as a Pending request for approval.
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-light px-4" @onclick="OnCancel">Cancel</button>
+                <button type="button" class="btn btn-primary px-4" @onclick="OnConfirm" disabled="@IsSubmitting">
+                    @if (IsSubmitting)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2"></span>
+                    }
+                    Confirm Booking
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string DateRange { get; set; } = "";
+    [Parameter] public string ErrorMessage { get; set; } = "";
+    [Parameter] public bool IsSubmitting { get; set; }
+    [Parameter] public EventCallback OnConfirm { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+}
+
+<style>
+    .icon-circle {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .modal-content {
+        border-radius: var(--radius-lg);
+    }
+</style>

@@ -1,0 +1,57 @@
+.view-toggle {
+    display: inline-flex;
+}
+
+.view-toggle .btn-group {
+    display: inline-flex;
+    gap: 0.25rem;
+    padding: 0.2rem;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    box-shadow: var(--shadow-sm);
+}
+
+.view-toggle .btn {
+    border: none;
+    border-radius: 999px;
+    padding: 0.45rem 1rem;
+    font-weight: 600;
+    font-size: 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    transition: all 0.2s ease;
+}
+
+.view-toggle .btn-outline-primary {
+    background: transparent;
+    color: var(--ink-700);
+}
+
+.view-toggle .btn-outline-primary:hover {
+    background: var(--surface-3);
+    color: var(--ink-900);
+}
+
+.view-toggle .btn-primary {
+    background: var(--accent-600);
+    color: #fff;
+    box-shadow: 0 6px 12px rgba(37, 99, 235, 0.2);
+}
+
+.view-toggle .btn-primary:hover {
+    background: var(--accent-500);
+    filter: brightness(1.05);
+}
+
+@media (max-width: 720px) {
+    .view-toggle,
+    .view-toggle .btn-group {
+        width: 100%;
+    }
+
+    .view-toggle .btn {
+        flex: 1;
+        justify-content: center;
+    }
+}
