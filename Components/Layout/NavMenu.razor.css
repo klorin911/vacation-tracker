@@ -93,6 +93,18 @@
     gap: 1rem;
 }
 
+.app-nav__dropdown {
+    position: relative;
+}
+
+.app-nav__dropdown > summary::-webkit-details-marker {
+    display: none;
+}
+
+.app-nav__dropdown > summary::marker {
+    display: none;
+}
+
 .app-nav__actions .btn {
     border-radius: var(--radius-md);
     padding: 0.4rem 0.8rem;
@@ -143,7 +155,7 @@
     position: absolute;
     right: 0;
     top: calc(100% + 0.5rem);
-    min-width: 180px;
+    min-width: 100%;
     background: var(--surface-2);
     border-radius: var(--radius-lg);
     padding: 0.5rem;

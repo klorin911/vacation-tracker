@@ -24,13 +24,78 @@
                 <div class="stat-card h-100">
                     <div class="stat-card__label">WEEKS USED</div>
                     <div class="stat-card__value text-success">@_weeksUsed/@_user.WeekQuota Weeks</div>
+                    <div class="stat-card__meta">
+                        <div class="stat-card__subheading">Reserved weeks</div>
+                        @if (_userWeekReservations.Count == 0)
+                        {
+                            <div class="stat-card__empty">No weeks reserved yet.</div>
+                        }
+                        else
+                        {
+                            <ul class="stat-card__list">
+                                @foreach (var request in _userWeekReservations)
+                                {
+                                    <li class="stat-card__item @(IsEditingRequest(request) ? "editing" : "")">
+                                        <div class="stat-card__item-details">
+                                            <span>@FormatWeekRange(request)</span>
+                                            <span class="badge @GetStatusBadgeClass(request.Status)">@request.Status</span>
+                                        </div>
+                                        <div class="stat-card__item-actions">
+                                            <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => StartEditingRequest(request)">Edit</button>
+                                            <button type="button" class="btn btn-sm btn-outline-danger btn-action-destructive" @onclick="() => PromptCancelRequest(request)">Cancel</button>
+                                        </div>
+                                    </li>
+                                }
+                            </ul>
+                        }
+                    </div>
                 </div>
             </div>
             <div class="col-md-6">
                 <div class="stat-card h-100">
                     <div class="stat-card__label">SINGLE DAYS USED</div>
                     <div class="stat-card__value text-primary">@_singleDaysUsed/@_user.DayQuota Days</div>
+                    <div class="stat-card__meta">
+                        <div class="stat-card__subheading">Reserved days</div>
+                        @if (_userDayReservations.Count == 0)
+                        {
+                            <div class="stat-card__empty">No days reserved yet.</div>
+                        }
+                        else
+                        {
+                            <ul class="stat-card__list">
+                                @foreach (var request in _userDayReservations)
+                                {
+                                    <li class="stat-card__item @(IsEditingRequest(request) ? "editing" : "")">
+                                        <div class="stat-card__item-details">
+                                            <span>@FormatDayRange(request)</span>
+                                            <span class="badge @GetStatusBadgeClass(request.Status)">@request.Status</span>
+                                        </div>
+                                        <div class="stat-card__item-actions">
+                                            <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => StartEditingRequest(request)">Edit</button>
+                                            <button type="button" class="btn btn-sm btn-outline-danger btn-action-destructive" @onclick="() => PromptCancelRequest(request)">Cancel</button>
+                                        </div>
+                                    </li>
+                                }
+                            </ul>
+                        }
+                    </div>
                 </div>
+            </div>
+        </div>
+    }
+
+    @if (_editingRequest != null)
+    {
+        <div class="edit-banner">
+            <div class="edit-banner__details">
+                <span class="badge bg-info text-dark">Editing</span>
+                <span>@FormatRequestRange(_editingRequest)</span>
+                <span class="text-muted">Select a new @(_editingRequest.IsWeekBooking ? "week" : "day") to update.</span>
+            </div>
+            <div class="edit-banner__actions">
+                <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="StopEditing">Stop editing</button>
+                <button type="button" class="btn btn-sm btn-outline-danger btn-action-destructive" @onclick="() => PromptCancelRequest(_editingRequest)">Cancel request</button>
             </div>
         </div>
     }
@@ -43,11 +108,11 @@
         <div class="data-panel__body">
             @if (_currentView == ViewToggle.ViewMode.Week)
             {
-                <WeekView OnWeekSelected="HandleWeekSelected" />
+                <WeekView OnWeekSelected="HandleWeekSelected" UserRequests="_userRequests" EditingRequestId="_editingRequest?.Id" />
             }
             else if (_currentView == ViewToggle.ViewMode.Day)
             {
-                <DayView OnDaySelected="HandleDaySelected" />
+                <DayView OnDaySelected="HandleDaySelected" UserRequests="_userRequests" EditingRequestId="_editingRequest?.Id" />
             }
         </div>
     </div>
@@ -59,13 +124,29 @@
         DateRange="@_confirmDateRange" 
         ErrorMessage="@_errorMessage"
         IsSubmitting="_isSubmitting"
-        OnConfirm="ConfirmQuickBooking"
-        OnCancel="() => _showConfirmationModal = false" />
+        Title="@GetConfirmationTitle()"
+        ActionLabel="@GetConfirmationActionLabel()"
+        NoteMessage="@GetConfirmationNoteMessage()"
+        ConfirmLabel="@GetConfirmationConfirmLabel()"
+        OnConfirm="ConfirmRequestAction"
+        OnCancel="CloseConfirmationModal" />
 }
 
 @code {
+    private enum ConfirmationAction
+    {
+        Create,
+        Update,
+        Cancel
+    }
+
     private User? _user;
     private List<VacationRequest> _allRequests = new();
+    private List<VacationRequest> _userRequests = new();
+    private List<VacationRequest> _userWeekReservations = new();
+    private List<VacationRequest> _userDayReservations = new();
+    private VacationRequest? _editingRequest;
+    private VacationRequest? _actionRequest;
     private int _weeksUsed = 0;
     private int _singleDaysUsed = 0;
     private bool _showConfirmationModal = false;
@@ -74,6 +155,7 @@
     private string _confirmDateRange = "";
     private bool _isSubmitting = false;
     private ViewToggle.ViewMode _currentView = ViewToggle.ViewMode.Week;
+    private ConfirmationAction _confirmationAction = ConfirmationAction.Create;
 
     protected override async Task OnInitializedAsync()
     {
@@ -96,14 +178,28 @@
         _allRequests = await VacationService.GetRequestsAsync();
         if (_user != null)
         {
-            var userRequests = await VacationService.GetRequestsByUserAsync(_user.Id);
+            _userRequests = await VacationService.GetRequestsByUserAsync(_user.Id);
             
-            var approvedVacations = userRequests
-                .Where(r => r.Status == Status.Approved && r.Type == RequestType.Vacation)
+            var vacationRequests = _userRequests
+                .Where(r => r.Type == RequestType.Vacation)
+                .ToList();
+
+            var approvedVacations = vacationRequests
+                .Where(r => r.Status == Status.Approved)
                 .ToList();
 
             _weeksUsed = approvedVacations.Count(r => r.IsWeekBooking);
             _singleDaysUsed = approvedVacations.Count(r => !r.IsWeekBooking);
+
+            _userWeekReservations = vacationRequests
+                .Where(r => r.IsWeekBooking && r.Status != Status.Rejected)
+                .OrderBy(r => r.StartDate)
+                .ToList();
+
+            _userDayReservations = vacationRequests
+                .Where(r => !r.IsWeekBooking && r.Status != Status.Rejected)
+                .OrderBy(r => r.StartDate)
+                .ToList();
         }
     }
 
@@ -119,6 +215,8 @@
         _newRequest.EndDate = range.End;
         _newRequest.IsWeekBooking = true;
         _confirmDateRange = $"{range.Start:MMM d} - {range.End:MMM d}, {range.Start:yyyy}";
+        _confirmationAction = _editingRequest == null ? ConfirmationAction.Create : ConfirmationAction.Update;
+        _actionRequest = _editingRequest;
         _showConfirmationModal = true;
     }
 
@@ -129,56 +227,244 @@
         _newRequest.EndDate = date;
         _newRequest.IsWeekBooking = false;
         _confirmDateRange = $"{date:MMMM d, yyyy}";
+        _confirmationAction = _editingRequest == null ? ConfirmationAction.Create : ConfirmationAction.Update;
+        _actionRequest = _editingRequest;
         _showConfirmationModal = true;
     }
 
-    private async Task ConfirmQuickBooking()
+    private void StartEditingRequest(VacationRequest request)
     {
-        await SubmitRequest();
-        if (string.IsNullOrEmpty(_errorMessage))
+        _editingRequest = request;
+        _currentView = request.IsWeekBooking ? ViewToggle.ViewMode.Week : ViewToggle.ViewMode.Day;
+    }
+
+    private void StopEditing()
+    {
+        _editingRequest = null;
+    }
+
+    private void PromptCancelRequest(VacationRequest request)
+    {
+        _errorMessage = "";
+        _confirmationAction = ConfirmationAction.Cancel;
+        _actionRequest = request;
+        _confirmDateRange = FormatRequestRange(request);
+        _showConfirmationModal = true;
+    }
+
+    private void CloseConfirmationModal()
+    {
+        _showConfirmationModal = false;
+        _errorMessage = "";
+        _confirmationAction = ConfirmationAction.Create;
+        _actionRequest = null;
+    }
+
+    private async Task ConfirmRequestAction()
+    {
+        _isSubmitting = true;
+        _errorMessage = "";
+
+        try
         {
-            _showConfirmationModal = false;
-            StateHasChanged(); // Refresh views
+            var success = _confirmationAction switch
+            {
+                ConfirmationAction.Update => await UpdateRequestAsync(),
+                ConfirmationAction.Cancel => await CancelRequestAsync(),
+                _ => await SubmitRequestAsync()
+            };
+
+            if (success)
+            {
+                _showConfirmationModal = false;
+                _confirmationAction = ConfirmationAction.Create;
+                _actionRequest = null;
+                StateHasChanged();
+            }
+        }
+        finally
+        {
+            _isSubmitting = false;
         }
     }
 
-    private async Task SubmitRequest()
+    private async Task<bool> SubmitRequestAsync()
     {
         if (_newRequest.EndDate < _newRequest.StartDate)
         {
             _errorMessage = "End date cannot be earlier than start date.";
-            return;
+            return false;
         }
 
-        _isSubmitting = true;
-        _errorMessage = "";
+        if (_user == null)
+        {
+            _errorMessage = "User not found.";
+            return false;
+        }
 
         try
         {
             var result = await VacationService.CreateRequestAsync(_newRequest);
             if (result.Success)
             {
-                _newRequest = new() { StartDate = DateTime.Today, EndDate = DateTime.Today, UserId = _user!.Id };
+                _newRequest = new() { StartDate = DateTime.Today, EndDate = DateTime.Today, UserId = _user.Id };
                 await LoadData();
+                return true;
             }
-            else
-            {
-                _errorMessage = result.Message;
-                // If it was a quick booking, we might want to show this error in the confirmation modal instead
-                if (_showConfirmationModal)
-                {
-                    // For now just alert it
-                    await Task.Yield();
-                }
-            }
+
+            _errorMessage = result.Message;
         }
         catch (Exception)
         {
             _errorMessage = "An error occurred while submitting your request.";
         }
-        finally
+
+        return false;
+    }
+
+    private async Task<bool> UpdateRequestAsync()
+    {
+        if (_editingRequest == null || _user == null)
         {
-            _isSubmitting = false;
+            _errorMessage = "Select a request to edit first.";
+            return false;
         }
+
+        if (_editingRequest.IsWeekBooking != _newRequest.IsWeekBooking)
+        {
+            _errorMessage = _editingRequest.IsWeekBooking
+                ? "Week requests must be updated in Week view."
+                : "Day requests must be updated in Day view.";
+            return false;
+        }
+
+        if (_newRequest.EndDate < _newRequest.StartDate)
+        {
+            _errorMessage = "End date cannot be earlier than start date.";
+            return false;
+        }
+
+        try
+        {
+            var result = await VacationService.UpdateRequestAsync(_editingRequest.Id, _user.Id, _newRequest.StartDate, _newRequest.EndDate);
+            if (result.Success)
+            {
+                _editingRequest = null;
+                await LoadData();
+                return true;
+            }
+
+            _errorMessage = result.Message;
+        }
+        catch (Exception)
+        {
+            _errorMessage = "An error occurred while updating your request.";
+        }
+
+        return false;
+    }
+
+    private async Task<bool> CancelRequestAsync()
+    {
+        if (_actionRequest == null || _user == null)
+        {
+            _errorMessage = "Select a request to cancel first.";
+            return false;
+        }
+
+        try
+        {
+            var result = await VacationService.DeleteRequestForUserAsync(_actionRequest.Id, _user.Id);
+            if (result)
+            {
+                if (_editingRequest?.Id == _actionRequest.Id)
+                {
+                    _editingRequest = null;
+                }
+
+                await LoadData();
+                return true;
+            }
+
+            _errorMessage = "Unable to cancel the request.";
+        }
+        catch (Exception)
+        {
+            _errorMessage = "An error occurred while canceling your request.";
+        }
+
+        return false;
+    }
+
+    private string FormatWeekRange(VacationRequest request)
+    {
+        return request.StartDate.Year == request.EndDate.Year
+            ? $"{request.StartDate:MMM d} - {request.EndDate:MMM d}, {request.EndDate:yyyy}"
+            : $"{request.StartDate:MMM d, yyyy} - {request.EndDate:MMM d, yyyy}";
+    }
+
+    private string FormatDayRange(VacationRequest request)
+    {
+        return request.StartDate.ToString("MMM d, yyyy");
+    }
+
+    private string FormatRequestRange(VacationRequest request)
+    {
+        return request.IsWeekBooking ? FormatWeekRange(request) : FormatDayRange(request);
+    }
+
+    private bool IsEditingRequest(VacationRequest request)
+    {
+        return _editingRequest?.Id == request.Id;
+    }
+
+    private string GetConfirmationTitle()
+    {
+        return _confirmationAction switch
+        {
+            ConfirmationAction.Update => "Confirm Vacation Update",
+            ConfirmationAction.Cancel => "Cancel Vacation Request",
+            _ => "Confirm Vacation Request"
+        };
+    }
+
+    private string GetConfirmationActionLabel()
+    {
+        return _confirmationAction switch
+        {
+            ConfirmationAction.Update => "You are updating vacation for:",
+            ConfirmationAction.Cancel => "You are canceling vacation for:",
+            _ => "You are requesting vacation for:"
+        };
+    }
+
+    private string GetConfirmationNoteMessage()
+    {
+        return _confirmationAction switch
+        {
+            ConfirmationAction.Update => "This will resubmit your request for approval.",
+            ConfirmationAction.Cancel => "This will remove your request from the calendar.",
+            _ => "This will be submitted as a Pending request for approval."
+        };
+    }
+
+    private string GetConfirmationConfirmLabel()
+    {
+        return _confirmationAction switch
+        {
+            ConfirmationAction.Update => "Update Request",
+            ConfirmationAction.Cancel => "Cancel Request",
+            _ => "Confirm Booking"
+        };
+    }
+
+    private string GetStatusBadgeClass(Status status)
+    {
+        return status switch
+        {
+            Status.Approved => "bg-success",
+            Status.Pending => "bg-warning text-dark",
+            _ => "bg-secondary"
+        };
     }
 }

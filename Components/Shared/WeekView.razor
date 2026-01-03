@@ -21,7 +21,9 @@
 
         @foreach (var week in _weeks)
         {
-            <div class="week-row @(week.IsFull ? "full" : "")" @onclick="() => SelectWeek(week)">
+            var userWeekRequest = GetUserWeekRequest(week.Start, week.End);
+            var hasUserOverlap = HasUserOverlap(week.Start, week.End);
+            <div class="week-row @(week.IsFull ? "full" : "") @(hasUserOverlap ? "user-blocked" : "") @(userWeekRequest != null ? "user-week" : "")" @onclick="() => SelectWeek(week)">
                 <!-- Week Info Column -->
                 <div class="week-info-cell">
                     <div class="week-number">W@(week.WeekNumber)</div>
@@ -30,13 +32,22 @@
                             @week.Taken/@week.Total
                         </span>
                     </div>
+                    @if (userWeekRequest != null)
+                    {
+                        <span class="user-week-tag @GetUserStatusClass(userWeekRequest.Status)">Your week</span>
+                    }
                 </div>
 
                 <!-- Days Columns -->
                 @foreach (var day in week.Days)
                 {
-                    <div class="day-cell @(day.Month != _currentMonth.Month ? "outside" : "") @(day.Date == DateTime.Today ? "today" : "")">
+                    var userDayRequest = GetUserDayRequestForDate(day);
+                    <div class="day-cell @(day.Month != _currentMonth.Month ? "outside" : "") @(day.Date == DateTime.Today ? "today" : "") @(userDayRequest != null ? "user-day" : "")">
                         <div class="day-number">@day.Day</div>
+                        @if (userDayRequest != null)
+                        {
+                            <span class="user-day-tag @GetUserStatusClass(userDayRequest.Status)">You</span>
+                        }
                     </div>
                 }
             </div>
@@ -46,6 +57,8 @@
 
 @code {
     [Parameter] public EventCallback<(DateTime Start, DateTime End)> OnWeekSelected { get; set; }
+    [Parameter] public List<VacationRequest> UserRequests { get; set; } = new();
+    [Parameter] public int? EditingRequestId { get; set; }
     
     private DateTime _currentMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
     private List<WeekInfo> _weeks = new();
@@ -102,7 +115,7 @@
 
     private void SelectWeek(WeekInfo week)
     {
-        if (!week.IsFull)
+        if (!week.IsFull && !HasUserOverlap(week.Start, week.End))
         {
             OnWeekSelected.InvokeAsync((week.Start, week.End));
         }
@@ -112,6 +125,41 @@
     {
         var day = (int)System.Globalization.CultureInfo.InvariantCulture.Calendar.GetDayOfWeek(date);
         return System.Globalization.CultureInfo.InvariantCulture.Calendar.GetWeekOfYear(date.AddDays(4 - (day == 0 ? 7 : day)), System.Globalization.CalendarWeekRule.FirstFourDayWeek, DayOfWeek.Monday);
+    }
+
+    private VacationRequest? GetUserWeekRequest(DateTime weekStart, DateTime weekEnd)
+    {
+        return UserRequests.FirstOrDefault(r =>
+            r.Type == RequestType.Vacation &&
+            r.IsWeekBooking &&
+            r.Status != Status.Rejected &&
+            r.StartDate.Date <= weekEnd.Date &&
+            r.EndDate.Date >= weekStart.Date);
+    }
+
+    private VacationRequest? GetUserDayRequestForDate(DateTime date)
+    {
+        return UserRequests.FirstOrDefault(r =>
+            r.Type == RequestType.Vacation &&
+            !r.IsWeekBooking &&
+            r.Status != Status.Rejected &&
+            r.StartDate.Date <= date.Date &&
+            r.EndDate.Date >= date.Date);
+    }
+
+    private bool HasUserOverlap(DateTime start, DateTime end)
+    {
+        return UserRequests.Any(r =>
+            (!EditingRequestId.HasValue || r.Id != EditingRequestId.Value) &&
+            r.Type == RequestType.Vacation &&
+            r.Status != Status.Rejected &&
+            r.StartDate.Date <= end.Date &&
+            r.EndDate.Date >= start.Date);
+    }
+
+    private string GetUserStatusClass(Status status)
+    {
+        return status == Status.Pending ? "pending" : "approved";
     }
 
     private class WeekInfo
@@ -160,6 +208,7 @@
         flex-direction: column;
         align-items: center;
         transition: background 0.2s;
+        position: relative;
     }
 
     .week-info-cell {
@@ -217,6 +266,46 @@
     .week-row.full .day-cell {
         background: var(--surface-2);
         opacity: 0.6;
+    }
+
+    .week-row.user-blocked .week-info-cell,
+    .week-row.user-blocked .day-cell {
+        cursor: not-allowed;
+    }
+
+    .week-row.user-week .week-info-cell {
+        box-shadow: inset 0 0 0 2px var(--accent-500);
+        background: var(--accent-100);
+    }
+
+    .day-cell.user-day {
+        box-shadow: inset 0 0 0 2px var(--accent-500);
+    }
+
+    .user-week-tag,
+    .user-day-tag {
+        margin-top: 0.35rem;
+        padding: 0.1rem 0.4rem;
+        border-radius: 999px;
+        font-size: 0.55rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        border: 1px solid var(--accent-500);
+        background: var(--accent-100);
+        color: var(--accent-600);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        align-self: center;
+    }
+
+    .user-week-tag.pending,
+    .user-day-tag.pending {
+        border-style: dashed;
+        background: var(--surface-3);
+        color: var(--ink-700);
     }
 
     .badge {

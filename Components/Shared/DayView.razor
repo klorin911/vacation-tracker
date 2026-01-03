@@ -20,12 +20,22 @@
 
         @foreach (var day in _days)
         {
-            <div class="day-cell @GetDayClass(day)" @onclick="() => SelectDay(day)">
+            var userRequest = GetUserRequestForDate(day.Date);
+            <div class="day-cell @GetDayClass(day, userRequest)" @onclick="() => SelectDay(day)">
                 <div class="day-number">@day.Date.Day</div>
+                @if (userRequest != null)
+                {
+                    <span class="user-reserved-tag @GetUserStatusClass(userRequest.Status)">You</span>
+                }
                 @if (day.IsInMonth)
                 {
                     <div class="day-status">
-                        @if (day.IsTaken)
+                        @if (userRequest != null)
+                        {
+                            <span class="status-dot reserved @GetUserStatusClass(userRequest.Status)" title="Your request"></span>
+                            <small class="status-text">@userRequest.Status</small>
+                        }
+                        else if (day.IsTaken)
                         {
                             <span class="status-dot taken" title="Taken"></span>
                             <small class="status-text text-danger">Taken</small>
@@ -44,6 +54,8 @@
 
 @code {
     [Parameter] public EventCallback<DateTime> OnDaySelected { get; set; }
+    [Parameter] public List<VacationRequest> UserRequests { get; set; } = new();
+    [Parameter] public int? EditingRequestId { get; set; }
 
     private DateTime _currentMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
     private List<DayInfo> _days = new();
@@ -95,19 +107,44 @@
 
     private void SelectDay(DayInfo day)
     {
-        if (day.IsInMonth && !day.IsTaken)
+        var userRequest = GetUserRequestForDate(day.Date);
+        if (day.IsInMonth && !day.IsTaken && (userRequest == null || IsEditingRequest(userRequest)))
         {
             OnDaySelected.InvokeAsync(day.Date);
         }
     }
 
-    private string GetDayClass(DayInfo day)
+    private string GetDayClass(DayInfo day, VacationRequest? userRequest)
     {
         var classes = new List<string>();
         if (!day.IsInMonth) classes.Add("outside");
         if (day.IsTaken) classes.Add("taken-cell");
+        if (userRequest != null)
+        {
+            classes.Add("user-reserved");
+            if (userRequest.Status == Status.Pending) classes.Add("user-pending");
+        }
         if (day.Date == DateTime.Today) classes.Add("today");
         return string.Join(" ", classes);
+    }
+
+    private VacationRequest? GetUserRequestForDate(DateTime date)
+    {
+        return UserRequests.FirstOrDefault(r =>
+            r.Type == RequestType.Vacation &&
+            r.Status != Status.Rejected &&
+            r.StartDate.Date <= date.Date &&
+            r.EndDate.Date >= date.Date);
+    }
+
+    private bool IsEditingRequest(VacationRequest request)
+    {
+        return EditingRequestId.HasValue && request.Id == EditingRequestId.Value;
+    }
+
+    private string GetUserStatusClass(Status status)
+    {
+        return status == Status.Pending ? "pending" : "approved";
     }
 
     private class DayInfo
@@ -146,8 +183,9 @@
         align-items: center;
         cursor: pointer;
         transition: background 0.2s;
+        position: relative;
     }
-    .day-cell:hover:not(.outside):not(.taken-cell) {
+    .day-cell:hover:not(.outside):not(.taken-cell):not(.user-reserved) {
         background: var(--surface-3);
     }
     .day-cell.outside {
@@ -181,4 +219,37 @@
     .status-dot.available { background: var(--success); }
     .status-dot.taken { background: var(--danger); }
     .status-text { font-size: 0.7rem; font-weight: 600; }
+
+    .status-dot.reserved { background: var(--accent-500); }
+    .status-dot.reserved.pending { background: var(--ink-500); }
+
+    .user-reserved-tag {
+        position: absolute;
+        top: 0.4rem;
+        right: 0.4rem;
+        padding: 0.1rem 0.4rem;
+        border-radius: 999px;
+        font-size: 0.55rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        border: 1px solid var(--accent-500);
+        background: var(--accent-100);
+        color: var(--accent-600);
+    }
+
+    .user-reserved-tag.pending {
+        border-style: dashed;
+        background: var(--surface-3);
+        color: var(--ink-700);
+    }
+
+    .day-cell.user-reserved {
+        box-shadow: inset 0 0 0 2px var(--accent-500);
+        cursor: not-allowed;
+    }
+
+    .day-cell.user-reserved.user-pending {
+        background: var(--surface-3);
+    }
 </style>

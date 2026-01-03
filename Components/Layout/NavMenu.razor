@@ -1,5 +1,6 @@
 @using System.Security.Claims
 @using VacationTracker.Components.Shared
+@inject IJSRuntime JS
 
 <div class="app-nav">
     <div class="app-nav__inner">
@@ -50,3 +51,13 @@
         </div>
     </div>
 </div>
+
+@code {
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("vacationTracker.initNavDropdowns");
+        }
+    }
+}

@@ -11,8 +11,10 @@ public interface IVacationService
     Task<(int Taken, int Total)> GetAvailabilityAsync(DateTime date);
     Task<(int Taken, int Total)> GetWeekAvailabilityAsync(DateTime monday);
     Task<(bool Success, string Message)> CreateRequestAsync(VacationRequest request);
+    Task<(bool Success, string Message)> UpdateRequestAsync(int requestId, int userId, DateTime startDate, DateTime endDate);
     Task<bool> UpdateStatusAsync(int requestId, Status status);
     Task<bool> DeleteRequestAsync(int requestId);
+    Task<bool> DeleteRequestForUserAsync(int requestId, int userId);
 }
 
 public class VacationService : IVacationService
@@ -78,6 +80,17 @@ public class VacationService : IVacationService
 
         if (user == null) return (false, "User not found.");
 
+        var hasOverlap = user.VacationRequests.Any(r =>
+            r.Type == RequestType.Vacation &&
+            r.Status != Status.Rejected &&
+            r.StartDate.Date <= request.EndDate.Date &&
+            r.EndDate.Date >= request.StartDate.Date);
+
+        if (hasOverlap)
+        {
+            return (false, "You already have a vacation request that overlaps these dates.");
+        }
+
         if (request.IsWeekBooking)
         {
             var approvedWeeks = user.VacationRequests
@@ -125,6 +138,98 @@ public class VacationService : IVacationService
         return (true, "Request created successfully.");
     }
 
+    public async Task<(bool Success, string Message)> UpdateRequestAsync(int requestId, int userId, DateTime startDate, DateTime endDate)
+    {
+        if (endDate < startDate)
+        {
+            return (false, "End date cannot be earlier than start date.");
+        }
+
+        var request = await _context.VacationRequests.FindAsync(requestId);
+        if (request == null || request.UserId != userId)
+        {
+            return (false, "Request not found.");
+        }
+
+        var user = await _context.Users
+            .AsNoTracking()
+            .Include(u => u.VacationRequests)
+            .FirstOrDefaultAsync(u => u.Id == userId);
+
+        if (user == null) return (false, "User not found.");
+
+        var hasOverlap = user.VacationRequests.Any(r =>
+            r.Id != requestId &&
+            r.Type == RequestType.Vacation &&
+            r.Status != Status.Rejected &&
+            r.StartDate.Date <= endDate.Date &&
+            r.EndDate.Date >= startDate.Date);
+
+        if (hasOverlap)
+        {
+            return (false, "You already have a vacation request that overlaps these dates.");
+        }
+
+        if (request.IsWeekBooking)
+        {
+            var approvedWeeks = user.VacationRequests
+                .Count(r => r.Id != requestId && r.Status == Status.Approved && r.Type == RequestType.Vacation && r.IsWeekBooking);
+
+            if (approvedWeeks + 1 > user.WeekQuota)
+            {
+                return (false, $"Request exceeds your weekly quota. You have {user.WeekQuota - approvedWeeks} weeks left.");
+            }
+        }
+        else
+        {
+            var approvedDays = user.VacationRequests
+                .Count(r => r.Id != requestId && r.Status == Status.Approved && r.Type == RequestType.Vacation && !r.IsWeekBooking);
+
+            if (approvedDays + 1 > user.DayQuota)
+            {
+                return (false, $"Request exceeds your single day quota. You have {user.DayQuota - approvedDays} days left.");
+            }
+        }
+
+        if (!request.IsWeekBooking)
+        {
+            var taken = await _context.VacationRequests
+                .AsNoTracking()
+                .Where(r => r.Id != requestId && r.Status == Status.Approved && !r.IsWeekBooking && r.StartDate.Date <= startDate.Date && r.EndDate.Date >= startDate.Date)
+                .CountAsync();
+
+            if (taken >= MaxDailyVacations)
+            {
+                return (false, $"Capacity reached for {startDate.ToShortDateString()}. Max {MaxDailyVacations} person allowed for single days.");
+            }
+        }
+        else
+        {
+            var startMonday = startDate.AddDays(-(int)startDate.DayOfWeek + (int)DayOfWeek.Monday);
+            if (startDate.DayOfWeek == DayOfWeek.Sunday) startMonday = startDate.AddDays(-6);
+            var sunday = startMonday.AddDays(6);
+
+            var taken = await _context.VacationRequests
+                .AsNoTracking()
+                .Where(r => r.Id != requestId && r.Status == Status.Approved && r.IsWeekBooking &&
+                            ((r.StartDate.Date <= sunday.Date && r.EndDate.Date >= startMonday.Date)))
+                .Select(r => r.UserId)
+                .Distinct()
+                .CountAsync();
+
+            if (taken >= MaxWeeklyVacations)
+            {
+                return (false, $"Weekly capacity reached for the week of {startMonday.ToShortDateString()}. Max {MaxWeeklyVacations} employees allowed.");
+            }
+        }
+
+        request.StartDate = startDate;
+        request.EndDate = endDate;
+        request.Status = Status.Pending;
+        await _context.SaveChangesAsync();
+        return (true, "Request updated successfully.");
+    }
+
     public async Task<bool> UpdateStatusAsync(int requestId, Status status)
     {
         var request = await _context.VacationRequests.FindAsync(requestId);
@@ -139,6 +244,16 @@ public class VacationService : IVacationService
     {
         var request = await _context.VacationRequests.FindAsync(requestId);
         if (request == null) return false;
+
+        _context.VacationRequests.Remove(request);
+        await _context.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<bool> DeleteRequestForUserAsync(int requestId, int userId)
+    {
+        var request = await _context.VacationRequests.FindAsync(requestId);
+        if (request == null || request.UserId != userId) return false;
 
         _context.VacationRequests.Remove(request);
         await _context.SaveChangesAsync();

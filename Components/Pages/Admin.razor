@@ -99,7 +99,7 @@
                                 <span class="badge @GetStatusBadgeClass(request.Status)">@request.Status</span>
                             </td>
                             <td class="text-end pe-4">
-                                <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteRequest(request.Id)">Delete</button>
+                                <button class="btn btn-sm btn-outline-danger btn-action-destructive" @onclick="() => DeleteRequest(request.Id)">Delete</button>
                             </td>
                         </tr>
                     }
