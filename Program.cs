@@ -12,6 +12,14 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services.AddCascadingAuthenticationState();
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = CookieEmailAuthHandler.SchemeName;
+    options.DefaultChallengeScheme = CookieEmailAuthHandler.SchemeName;
+}).AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, CookieEmailAuthHandler>(
+    CookieEmailAuthHandler.SchemeName,
+    options => { });
+builder.Services.AddAuthorization();
 builder.Services.AddAuthorizationCore();
 builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthStateProvider>();
 builder.Services.AddScoped<Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage.ProtectedSessionStorage>();
@@ -69,6 +77,8 @@ if (!app.Environment.IsDevelopment())
 }
 
 
+app.UseAuthentication();
+app.UseAuthorization();
 app.UseAntiforgery();
 
 app.MapStaticAssets();

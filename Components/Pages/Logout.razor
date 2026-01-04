@@ -1,8 +1,10 @@
 @page "/logout"
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.JSInterop
 @using VacationTracker.Auth
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager NavigationManager
+@inject IJSRuntime JsRuntime
 
 @code {
     protected override async Task OnInitializedAsync()
@@ -11,6 +13,7 @@
         {
             await customAuthStateProvider.UpdateAuthenticationState(null);
         }
+        await JsRuntime.InvokeVoidAsync("vacationTracker.clearCookie", "vt_user");
         NavigationManager.NavigateTo("/");
     }
 }

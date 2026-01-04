@@ -2,11 +2,13 @@
 @page "/login"
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.JSInterop
 @using VacationTracker.Auth
 @using VacationTracker.Services
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager NavigationManager
 @inject IUserService UserService
+@inject IJSRuntime JsRuntime
 
 <div class="d-flex justify-content-center align-items-center" style="min-height: 70vh;">
     <div class="form-card" style="min-width: min(420px, 92vw);">
@@ -81,6 +83,7 @@
             }
 
             await customAuthStateProvider.UpdateAuthenticationState(_email);
+            await JsRuntime.InvokeVoidAsync("vacationTracker.setCookie", "vt_user", _email, 7);
             NavigationManager.NavigateTo("/dashboard");
         }
         catch (Exception ex)

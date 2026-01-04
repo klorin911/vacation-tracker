@@ -32,10 +32,6 @@
                             @week.Taken/@week.Total
                         </span>
                     </div>
-                    @if (userWeekRequest != null)
-                    {
-                        <span class="user-week-tag @GetUserStatusClass(userWeekRequest.Status)">Your week</span>
-                    }
                 </div>
 
                 <!-- Days Columns -->
@@ -44,6 +40,10 @@
                     var userDayRequest = GetUserDayRequestForDate(day);
                     <div class="day-cell @(day.Month != _currentMonth.Month ? "outside" : "") @(day.Date == DateTime.Today ? "today" : "") @(userDayRequest != null ? "user-day" : "")">
                         <div class="day-number">@day.Day</div>
+                        @if (day.DayOfWeek == DayOfWeek.Monday && userWeekRequest != null)
+                        {
+                            <span class="user-week-tag @GetUserStatusClass(userWeekRequest.Status)">Your week</span>
+                        }
                         @if (userDayRequest != null)
                         {
                             <span class="user-day-tag @GetUserStatusClass(userDayRequest.Status)">You</span>
@@ -287,6 +287,10 @@
         background: var(--accent-100);
     }
 
+    .week-row.user-week .day-cell {
+        box-shadow: inset 0 0 0 2px var(--accent-500);
+    }
+
     .day-cell.user-day {
         box-shadow: inset 0 0 0 2px var(--accent-500);
     }
@@ -294,9 +298,9 @@
     .user-week-tag,
     .user-day-tag {
         margin-top: 0.35rem;
-        padding: 0.1rem 0.4rem;
+        padding: 0.1rem 0.35rem;
         border-radius: 999px;
-        font-size: 0.55rem;
+        font-size: 0.5rem;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.04em;
@@ -308,6 +312,16 @@
         justify-content: center;
         text-align: center;
         align-self: center;
+        white-space: nowrap;
+    }
+
+    .week-info-cell .user-week-tag {
+        position: absolute;
+        left: 50%;
+        bottom: 0.45rem;
+        transform: translateX(-50%);
+        margin-top: 0;
+        pointer-events: none;
     }
 
     .user-week-tag.pending,
