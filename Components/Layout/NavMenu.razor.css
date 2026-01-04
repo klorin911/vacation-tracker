@@ -1,5 +1,5 @@
 .app-nav {
-    --nav-bg: linear-gradient(135deg, #f8fafc 0%, #eef2f7 100%);
+    --nav-bg: var(--surface-2);
     --nav-border: rgba(15, 23, 42, 0.08);
     --nav-ink: var(--ink-900);
     --nav-link: var(--ink-700);
@@ -39,9 +39,6 @@
     letter-spacing: -0.03em;
     color: var(--nav-ink);
     text-decoration: none;
-    background: linear-gradient(135deg, var(--nav-ink) 0%, var(--accent-600) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
 }
 
 .app-nav__links {

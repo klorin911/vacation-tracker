@@ -38,23 +38,51 @@ html, body {
 [data-theme="dark"] {
     color-scheme: dark;
     --ink-900: #f8fafc;
-    --ink-700: #f1f5f9;
-    --ink-500: #94a3b8;
-    --ink-300: #475569;
-    --navy-900: #020617;
-    --navy-800: #0f172a;
-    --accent-600: #3b82f6;
-    --accent-500: #60a5fa;
-    --accent-100: #1e3a8a;
-    --surface: #020617;
-    --surface-2: #0f172a;
-    --surface-3: #1e293b;
-    --border: #1e293b;
+    --ink-700: #e2e8f0;
+    --ink-500: #cbd5e1;
+    --ink-300: #94a3b8;
+    --navy-900: #111827;
+    --navy-800: #1f2937;
+    --accent-600: #4b5563;
+    --accent-500: #6b7280;
+    --accent-100: #374151;
+    --surface: #0f172a;
+    --surface-2: #1e293b;
+    --surface-3: #273449;
+    --border: #334155;
     
     --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.5);
     --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.5), 0 2px 4px -2px rgb(0 0 0 / 0.5);
     --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.5);
     --shadow-soft: 0 20px 25px -5px rgb(0 0 0 / 0.5), 0 8px 10px -6px rgb(0 0 0 / 0.5);
+}
+
+[data-theme="dark"] .btn-primary {
+    background: var(--accent-600);
+    color: #f8fafc;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.35);
+}
+
+[data-theme="dark"] .btn-primary:hover {
+    background: var(--accent-500);
+    filter: none;
+}
+
+[data-theme="dark"] .btn-outline-secondary {
+    color: var(--ink-900);
+    border-color: var(--ink-300);
+    background: transparent;
+}
+
+[data-theme="dark"] .btn-outline-secondary:hover {
+    background: var(--surface-3);
+    color: var(--ink-900);
+    border-color: var(--ink-500);
+}
+
+[data-theme="dark"] .btn-icon {
+    color: var(--ink-900);
+    border-color: var(--ink-300);
 }
 
 a, .btn-link {
