@@ -401,12 +401,6 @@ h1:focus {
     transition: all 0.2s ease;
 }
 
-.stat-card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
-    border-color: var(--accent-500);
-}
-
 .stat-card__label {
     font-size: 0.7rem;
     letter-spacing: 0.1em;
@@ -482,6 +476,42 @@ h1:focus {
     display: inline-flex;
     gap: 0.35rem;
     flex-wrap: wrap;
+}
+
+.stat-card__item-actions .btn-action {
+    border-radius: 999px;
+    padding: 0.2rem 0.65rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    border: 1px solid transparent;
+    line-height: 1.2;
+}
+
+.stat-card__item-actions .btn-action--edit {
+    background: var(--accent-100);
+    border-color: var(--accent-300);
+    color: var(--accent-700);
+}
+
+.stat-card__item-actions .btn-action--edit:hover,
+.stat-card__item-actions .btn-action--edit:focus {
+    background: var(--accent-100);
+    border-color: var(--accent-500);
+    color: var(--accent-800);
+}
+
+.stat-card__item-actions .btn-action--cancel {
+    background: var(--danger-soft);
+    border-color: var(--danger-border);
+    color: var(--danger-ink);
+}
+
+.stat-card__item-actions .btn-action--cancel:hover,
+.stat-card__item-actions .btn-action--cancel:focus {
+    background: var(--danger-soft);
+    border-color: var(--danger);
+    color: var(--danger-ink);
 }
 
 .stat-card__empty {

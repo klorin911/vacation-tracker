@@ -41,8 +41,8 @@
                                             <span class="badge @GetStatusBadgeClass(request.Status)">@request.Status</span>
                                         </div>
                                         <div class="stat-card__item-actions">
-                                            <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => StartEditingRequest(request)">Edit</button>
-                                            <button type="button" class="btn btn-sm btn-outline-danger btn-action-destructive" @onclick="() => PromptCancelRequest(request)">Cancel</button>
+                                            <button type="button" class="btn btn-sm btn-action btn-action--edit" @onclick="() => StartEditingRequest(request)">Edit</button>
+                                            <button type="button" class="btn btn-sm btn-action btn-action--cancel" @onclick="() => PromptCancelRequest(request)">Cancel</button>
                                         </div>
                                     </li>
                                 }
@@ -72,8 +72,8 @@
                                             <span class="badge @GetStatusBadgeClass(request.Status)">@request.Status</span>
                                         </div>
                                         <div class="stat-card__item-actions">
-                                            <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => StartEditingRequest(request)">Edit</button>
-                                            <button type="button" class="btn btn-sm btn-outline-danger btn-action-destructive" @onclick="() => PromptCancelRequest(request)">Cancel</button>
+                                            <button type="button" class="btn btn-sm btn-action btn-action--edit" @onclick="() => StartEditingRequest(request)">Edit</button>
+                                            <button type="button" class="btn btn-sm btn-action btn-action--cancel" @onclick="() => PromptCancelRequest(request)">Cancel</button>
                                         </div>
                                     </li>
                                 }
