@@ -2,8 +2,8 @@ namespace VacationTracker.Data.Entities;
 
 public enum Role
 {
-    User,
-    Admin
+    Employee = 0,
+    Admin = 1
 }
 
 public enum Status

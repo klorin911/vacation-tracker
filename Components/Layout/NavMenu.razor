@@ -1,5 +1,6 @@
 @using System.Security.Claims
 @using VacationTracker.Components.Shared
+@using VacationTracker.Data.Entities
 @inject IJSRuntime JS
 
 <div class="app-nav">
@@ -17,7 +18,7 @@
             <AuthorizeView>
                 <Authorized Context="navContext">
                     <NavLink class="app-nav__link" href="dashboard">Dashboard</NavLink>
-                    <AuthorizeView Roles="Admin">
+                    <AuthorizeView Roles="@nameof(Role.Admin)">
                         <NavLink class="app-nav__link" href="admin">Admin</NavLink>
                     </AuthorizeView>
                 </Authorized>

@@ -13,7 +13,7 @@ public class User
     [Required]
     public string Name { get; set; } = string.Empty;
 
-    public Role Role { get; set; } = Role.User;
+    public Role Role { get; set; } = Role.Employee;
 
     public int WeekQuota { get; set; } = 5;
 

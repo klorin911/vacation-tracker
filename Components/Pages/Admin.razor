@@ -2,7 +2,7 @@
 @using Microsoft.AspNetCore.Authorization
 @using VacationTracker.Data.Entities
 @using VacationTracker.Services
-@attribute [Authorize(Roles = "Admin")]
+@attribute [Authorize(Roles = nameof(Role.Admin))]
 @inject IVacationService VacationService
 @inject IUserService UserService
 
@@ -58,7 +58,7 @@
                                 @request.StartDate.ToShortDateString() - @request.EndDate.ToShortDateString()
                             </td>
                             <td>@((request.EndDate - request.StartDate).Days + 1)</td>
-                            <td><span class="badge bg-info text-dark">@request.Type</span></td>
+                            <td><span class="badge text-bg-info">@request.Type</span></td>
                             <td class="text-truncate" style="max-width: 200px;" title="@request.Comment">
                                 @request.Comment
                             </td>
@@ -151,8 +151,8 @@
     {
         return status switch
         {
-            Status.Approved => "bg-success",
-            Status.Rejected => "bg-danger",
+            Status.Approved => "text-bg-success",
+            Status.Rejected => "text-bg-danger",
             _ => "bg-secondary"
         };
     }

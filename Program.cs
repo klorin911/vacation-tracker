@@ -42,8 +42,8 @@ using (var scope = app.Services.CreateScope())
         context.Users.Add(new VacationTracker.Data.Entities.User
         {
             Email = "admin@example.com",
-            Name = "Admin User",
-            Role = VacationTracker.Data.Entities.Role.Admin,
+            Name = "Employee User",
+            Role = VacationTracker.Data.Entities.Role.Employee,
             WeekQuota = 5,
             DayQuota = 5
         });
@@ -51,7 +51,7 @@ using (var scope = app.Services.CreateScope())
         {
             Email = "user@example.com",
             Name = "Normal User",
-            Role = VacationTracker.Data.Entities.Role.User,
+            Role = VacationTracker.Data.Entities.Role.Employee,
             WeekQuota = 5,
             DayQuota = 5
         });
