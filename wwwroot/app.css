@@ -22,6 +22,7 @@ html, body {
     --surface: #f8fafc;
     --surface-2: #ffffff;
     --surface-3: #f1f5f9;
+    --header-bg: #f1f5f9;
     --border: #e2e8f0;
 
     --success: #16a34a;
@@ -66,6 +67,7 @@ html, body {
     --surface: #0b1220;
     --surface-2: #111827;
     --surface-3: #17233a;
+    --header-bg: #0f172a;
     --border: #24324a;
 
     --success: #22c55e;

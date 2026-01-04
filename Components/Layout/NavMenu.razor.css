@@ -1,5 +1,5 @@
 .app-nav {
-    --nav-bg: var(--surface-2);
+    --nav-bg: var(--header-bg);
     --nav-border: rgba(15, 23, 42, 0.08);
     --nav-ink: var(--ink-900);
     --nav-link: var(--ink-700);
@@ -13,7 +13,7 @@
 }
 
 [data-theme="dark"] .app-nav {
-    --nav-bg: rgba(11, 18, 32, 0.96);
+    --nav-bg: var(--header-bg);
     --nav-border: var(--border);
     --nav-ink: var(--ink-900);
     --nav-link: var(--ink-700);
