@@ -237,6 +237,10 @@
         opacity: 0.3;
     }
 
+    [data-theme="dark"] .day-cell.outside {
+        opacity: 0.5;
+    }
+
     .day-cell.today {
         position: relative;
     }
@@ -266,6 +270,11 @@
     .week-row.full .day-cell {
         background: var(--surface-2);
         opacity: 0.6;
+    }
+
+    [data-theme="dark"] .week-row.full .week-info-cell,
+    [data-theme="dark"] .week-row.full .day-cell {
+        opacity: 0.75;
     }
 
     .week-row.user-blocked .week-info-cell,

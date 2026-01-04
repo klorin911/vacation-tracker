@@ -13,14 +13,14 @@
 }
 
 [data-theme="dark"] .app-nav {
-    --nav-bg: rgba(15, 23, 42, 0.92);
-    --nav-border: rgba(148, 163, 184, 0.18);
-    --nav-ink: #f8fafc;
-    --nav-link: rgba(226, 232, 240, 0.85);
-    --nav-link-muted: rgba(226, 232, 240, 0.7);
-    --nav-surface: rgba(255, 255, 255, 0.08);
-    --nav-surface-hover: rgba(255, 255, 255, 0.16);
-    box-shadow: 0 6px 20px rgba(2, 6, 23, 0.45);
+    --nav-bg: rgba(11, 18, 32, 0.96);
+    --nav-border: var(--border);
+    --nav-ink: var(--ink-900);
+    --nav-link: var(--ink-700);
+    --nav-link-muted: var(--ink-500);
+    --nav-surface: rgba(255, 255, 255, 0.06);
+    --nav-surface-hover: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 10px 24px rgba(2, 6, 23, 0.4);
 }
 
 .app-nav__inner {

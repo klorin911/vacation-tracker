@@ -89,7 +89,7 @@
     {
         <div class="edit-banner">
             <div class="edit-banner__details">
-                <span class="badge bg-info text-dark">Editing</span>
+                <span class="badge text-bg-info">Editing</span>
                 <span>@FormatRequestRange(_editingRequest)</span>
                 <span class="text-muted">Select a new @(_editingRequest.IsWeekBooking ? "week" : "day") to update.</span>
             </div>
@@ -460,8 +460,8 @@
     {
         return status switch
         {
-            Status.Approved => "bg-success",
-            Status.Pending => "bg-warning text-dark",
+            Status.Approved => "text-bg-success",
+            Status.Pending => "text-bg-warning",
             _ => "bg-secondary"
         };
     }

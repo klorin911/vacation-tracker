@@ -23,12 +23,29 @@ html, body {
     --surface-2: #ffffff;
     --surface-3: #f1f5f9;
     --border: #e2e8f0;
+
+    --success: #16a34a;
+    --success-ink: #166534;
+    --success-soft: #dcfce7;
+    --danger: #dc2626;
+    --danger-ink: #b91c1c;
+    --danger-soft: #fff1f2;
+    --danger-soft-hover: #ffe4e6;
+    --danger-border: #fecdd3;
+    --warning: #f59e0b;
+    --warning-ink: #92400e;
+    --info: #0ea5e9;
+    --info-ink: #075985;
     
     --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
     --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
     --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
     --shadow-soft: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
     --shadow-card: var(--shadow-md);
+
+    --focus-ring: 0 0 0 0.12rem rgba(37, 99, 235, 0.15), 0 0 0 0.25rem rgba(37, 99, 235, 0.15);
+    --focus-ring-soft: 0 0 0 4px rgba(37, 99, 235, 0.12);
+    --modal-scrim: rgba(15, 23, 42, 0.45);
     
     --radius-lg: 12px;
     --radius-md: 8px;
@@ -37,24 +54,92 @@ html, body {
 
 [data-theme="dark"] {
     color-scheme: dark;
-    --ink-900: #f8fafc;
-    --ink-700: #e2e8f0;
-    --ink-500: #cbd5e1;
-    --ink-300: #94a3b8;
-    --navy-900: #111827;
-    --navy-800: #1f2937;
-    --accent-600: #4b5563;
-    --accent-500: #6b7280;
-    --accent-100: #374151;
-    --surface: #0f172a;
-    --surface-2: #1e293b;
-    --surface-3: #273449;
-    --border: #334155;
+    --ink-900: #e5e7eb;
+    --ink-700: #cbd5e1;
+    --ink-500: #94a3b8;
+    --ink-300: #6b7280;
+    --navy-900: #0b1220;
+    --navy-800: #111827;
+    --accent-600: #3b82f6;
+    --accent-500: #60a5fa;
+    --accent-100: rgba(59, 130, 246, 0.18);
+    --surface: #0b1220;
+    --surface-2: #111827;
+    --surface-3: #17233a;
+    --border: #24324a;
+
+    --success: #22c55e;
+    --success-ink: #86efac;
+    --success-soft: rgba(34, 197, 94, 0.16);
+    --danger: #f87171;
+    --danger-ink: #fecaca;
+    --danger-soft: rgba(248, 113, 113, 0.18);
+    --danger-soft-hover: rgba(248, 113, 113, 0.26);
+    --danger-border: rgba(248, 113, 113, 0.45);
+    --warning: #fbbf24;
+    --warning-ink: #fde68a;
+    --info: #38bdf8;
+    --info-ink: #7dd3fc;
     
-    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.5);
-    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.5), 0 2px 4px -2px rgb(0 0 0 / 0.5);
-    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.5);
-    --shadow-soft: 0 20px 25px -5px rgb(0 0 0 / 0.5), 0 8px 10px -6px rgb(0 0 0 / 0.5);
+    --shadow-sm: 0 1px 0 rgba(255, 255, 255, 0.05);
+    --shadow-md: 0 1px 0 rgba(255, 255, 255, 0.04), 0 10px 20px rgba(2, 6, 23, 0.35);
+    --shadow-lg: 0 1px 0 rgba(255, 255, 255, 0.04), 0 18px 32px rgba(2, 6, 23, 0.45);
+    --shadow-soft: 0 1px 0 rgba(255, 255, 255, 0.04), 0 28px 48px rgba(2, 6, 23, 0.5);
+
+    --focus-ring: 0 0 0 0.12rem rgba(96, 165, 250, 0.25), 0 0 0 0.25rem rgba(96, 165, 250, 0.2);
+    --focus-ring-soft: 0 0 0 4px rgba(96, 165, 250, 0.25);
+    --modal-scrim: rgba(2, 6, 23, 0.65);
+}
+
+[data-bs-theme="dark"] {
+    --bs-body-bg: var(--surface);
+    --bs-body-bg-rgb: 11, 18, 32;
+    --bs-body-color: var(--ink-900);
+    --bs-body-color-rgb: 229, 231, 235;
+    --bs-emphasis-color: var(--ink-900);
+    --bs-secondary-color: var(--ink-500);
+    --bs-secondary-bg: var(--surface-2);
+    --bs-tertiary-color: var(--ink-300);
+    --bs-tertiary-bg: var(--surface-3);
+    --bs-border-color: var(--border);
+    --bs-border-color-translucent: rgba(148, 163, 184, 0.2);
+    --bs-link-color: var(--accent-500);
+    --bs-link-hover-color: var(--accent-600);
+    --bs-primary: var(--accent-600);
+    --bs-primary-rgb: 59, 130, 246;
+    --bs-secondary: var(--ink-500);
+    --bs-secondary-rgb: 148, 163, 184;
+    --bs-success: var(--success);
+    --bs-success-rgb: 34, 197, 94;
+    --bs-danger: var(--danger);
+    --bs-danger-rgb: 248, 113, 113;
+    --bs-warning: var(--warning);
+    --bs-warning-rgb: 251, 191, 36;
+    --bs-info: var(--info);
+    --bs-info-rgb: 56, 189, 248;
+    --bs-light: var(--surface-2);
+    --bs-light-rgb: 17, 24, 39;
+    --bs-dark: #0b1220;
+    --bs-dark-rgb: 11, 18, 32;
+    --bs-primary-text-emphasis: var(--accent-500);
+    --bs-success-text-emphasis: var(--success-ink);
+    --bs-danger-text-emphasis: var(--danger-ink);
+    --bs-warning-text-emphasis: var(--warning-ink);
+    --bs-info-text-emphasis: var(--info-ink);
+    --bs-primary-bg-subtle: var(--accent-100);
+    --bs-success-bg-subtle: var(--success-soft);
+    --bs-danger-bg-subtle: var(--danger-soft);
+    --bs-warning-bg-subtle: rgba(251, 191, 36, 0.18);
+    --bs-info-bg-subtle: rgba(56, 189, 248, 0.18);
+    --bs-success-border-subtle: rgba(34, 197, 94, 0.45);
+    --bs-danger-border-subtle: var(--danger-border);
+    --bs-warning-border-subtle: rgba(251, 191, 36, 0.45);
+    --bs-info-border-subtle: rgba(56, 189, 248, 0.45);
+    --bs-form-valid-color: var(--success);
+    --bs-form-invalid-color: var(--danger);
+    --bs-form-valid-border-color: var(--success);
+    --bs-form-invalid-border-color: var(--danger);
+    --bs-focus-ring-color: rgba(96, 165, 250, 0.45);
 }
 
 [data-theme="dark"] .btn-primary {
@@ -230,7 +315,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.12rem rgba(43, 91, 255, 0.15), 0 0 0 0.25rem rgba(43, 91, 255, 0.15);
+  box-shadow: var(--focus-ring);
 }
 
 h1:focus {
@@ -238,15 +323,15 @@ h1:focus {
 }
 
 .valid.modified:not([type=checkbox]) {
-    outline: 1px solid #26b050;
+    outline: 1px solid var(--success);
 }
 
 .invalid {
-    outline: 1px solid #e50000;
+    outline: 1px solid var(--danger);
 }
 
 .validation-message {
-    color: #e50000;
+    color: var(--danger);
 }
 
 .blazor-error-boundary {
@@ -272,7 +357,7 @@ h1:focus {
     text-align: start;
 }
 .calendar-container {
-    background-color: white;
+    background-color: var(--surface-2);
     border-radius: var(--radius-lg);
     overflow: hidden;
     border: 1px solid var(--border);
@@ -405,18 +490,18 @@ h1:focus {
 }
 
 .btn-action-destructive {
-    border-color: rgba(220, 53, 69, 0.35);
-    color: #b42318;
-    background: #fff5f5;
+    border-color: var(--danger-border);
+    color: var(--danger-ink);
+    background: var(--danger-soft);
     font-weight: 600;
 }
 
 .btn-action-destructive:hover,
 .btn-action-destructive:focus {
-    border-color: rgba(220, 53, 69, 0.6);
-    color: #8a1c1c;
-    background: #ffe4e6;
-    box-shadow: 0 6px 14px rgba(220, 53, 69, 0.2);
+    border-color: var(--danger);
+    color: var(--danger-ink);
+    background: var(--danger-soft-hover);
+    box-shadow: 0 6px 14px rgba(220, 38, 38, 0.2);
 }
 
 .edit-banner {
@@ -535,7 +620,7 @@ h1:focus {
 }
 
 [data-theme="dark"] .chip {
-    background: rgba(37, 99, 235, 0.15);
+    background: var(--accent-100);
     color: var(--accent-500);
 }
 
@@ -579,7 +664,7 @@ h1:focus {
 
 .form-control:focus, .form-select:focus {
     border-color: var(--accent-500);
-    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+    box-shadow: var(--focus-ring-soft);
     background-color: var(--surface-2);
 }
 
@@ -589,6 +674,10 @@ h1:focus {
     border: 1px solid var(--border);
     box-shadow: var(--shadow-soft);
     overflow: hidden;
+}
+
+.modal-scrim {
+    background-color: var(--modal-scrim);
 }
 
 .modal-header, .modal-footer {

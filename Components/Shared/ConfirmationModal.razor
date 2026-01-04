@@ -1,4 +1,4 @@
-<div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1">
+<div class="modal fade show d-block modal-scrim" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header border-0 pb-0">
@@ -36,7 +36,7 @@
                 }
             </div>
             <div class="modal-footer border-0 pt-0">
-                <button type="button" class="btn btn-light px-4" @onclick="OnCancel">Cancel</button>
+                <button type="button" class="btn btn-surface px-4" @onclick="OnCancel">Cancel</button>
                 <button type="button" class="btn btn-primary px-4" @onclick="OnConfirm" disabled="@IsSubmitting">
                     @if (IsSubmitting)
                     {

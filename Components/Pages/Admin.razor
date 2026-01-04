@@ -1,5 +1,6 @@
 @page "/admin"
 @using Microsoft.AspNetCore.Authorization
+@using System.ComponentModel.DataAnnotations
 @using VacationTracker.Data.Entities
 @using VacationTracker.Services
 @attribute [Authorize(Roles = nameof(Role.Admin))]
@@ -10,116 +11,276 @@
     <div class="app-toolbar">
         <div>
             <h2 class="page-title mb-1">Admin Panel</h2>
-            <p class="subtle-text mb-0">Review and manage all vacation requests.</p>
+            <p class="subtle-text mb-0">Review and manage vacation requests and users.</p>
         </div>
         <div class="app-toolbar__actions">
             <span class="chip">Requests @(_allRequests.Count)</span>
         </div>
     </div>
 
-    <div class="table-surface">
-        <div class="px-4 py-3 border-bottom">
-            <h5 class="mb-0">Pending Requests</h5>
-        </div>
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead>
-                    <tr>
-                        <th class="ps-4">Employee</th>
-                        <th>Period</th>
-                        <th>Days</th>
-                        <th>Type</th>
-                        <th>Comment</th>
-                        <th class="text-end pe-4">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @if (!_pendingRequests.Any())
-                    {
-                        <tr>
-                            <td colspan="6" class="text-center py-4 text-muted">No pending requests.</td>
-                        </tr>
-                    }
-                    @foreach (var request in _pendingRequests)
-                    {
-                        <tr>
-                            <td class="ps-4">
-                                <div class="d-flex align-items-center">
-                                    <div class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px; font-size: 0.8rem;">
-                                        @request.User.Name[0]
-                                    </div>
-                                    <div>
-                                        <div class="fw-bold">@request.User.Name</div>
-                                        <div class="small text-muted">@request.User.Email</div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>
-                                @request.StartDate.ToShortDateString() - @request.EndDate.ToShortDateString()
-                            </td>
-                            <td>@((request.EndDate - request.StartDate).Days + 1)</td>
-                            <td><span class="badge text-bg-info">@request.Type</span></td>
-                            <td class="text-truncate" style="max-width: 200px;" title="@request.Comment">
-                                @request.Comment
-                            </td>
-                            <td class="text-end pe-4">
-                                <button class="btn btn-sm btn-success me-1" @onclick="() => UpdateStatus(request.Id, Status.Approved)">Approve</button>
-                                <button class="btn btn-sm btn-danger" @onclick="() => UpdateStatus(request.Id, Status.Rejected)">Reject</button>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-    </div>
+    <ul class="nav nav-tabs mb-3">
+        <li class="nav-item">
+            <button type="button" class="nav-link @GetTabClass("requests")" @onclick="@(() => SetActiveTab("requests"))">
+                Requests
+            </button>
+        </li>
+        <li class="nav-item">
+            <button type="button" class="nav-link @GetTabClass("users")" @onclick="@(() => SetActiveTab("users"))">
+                Users
+            </button>
+        </li>
+    </ul>
 
-    <div class="table-surface">
-        <div class="px-4 py-3 border-bottom">
-            <h5 class="mb-0">Request History</h5>
-        </div>
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead>
-                    <tr>
-                        <th class="ps-4">Employee</th>
-                        <th>Period</th>
-                        <th>Type</th>
-                        <th>Status</th>
-                        <th class="text-end pe-4">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var request in _historyRequests)
-                    {
+    @if (_activeTab == "requests")
+    {
+        <div class="table-surface">
+            <div class="px-4 py-3 border-bottom">
+                <h5 class="mb-0">Pending Requests</h5>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
                         <tr>
-                            <td class="ps-4">@request.User.Name</td>
-                            <td>@request.StartDate.ToShortDateString() - @request.EndDate.ToShortDateString()</td>
-                            <td>@request.Type</td>
-                            <td>
-                                <span class="badge @GetStatusBadgeClass(request.Status)">@request.Status</span>
-                            </td>
-                            <td class="text-end pe-4">
-                                <button class="btn btn-sm btn-outline-danger btn-action-destructive" @onclick="() => DeleteRequest(request.Id)">Delete</button>
-                            </td>
+                            <th class="ps-4">Employee</th>
+                            <th>Period</th>
+                            <th>Days</th>
+                            <th>Type</th>
+                            <th>Comment</th>
+                            <th class="text-end pe-4">Actions</th>
                         </tr>
-                    }
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        @if (!_pendingRequests.Any())
+                        {
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted">No pending requests.</td>
+                            </tr>
+                        }
+                        @foreach (var request in _pendingRequests)
+                        {
+                            <tr>
+                                <td class="ps-4">
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px; font-size: 0.8rem;">
+                                            @request.User.Name[0]
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold">@request.User.Name</div>
+                                            <div class="small text-muted">@request.User.Email</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    @request.StartDate.ToShortDateString() - @request.EndDate.ToShortDateString()
+                                </td>
+                                <td>@((request.EndDate - request.StartDate).Days + 1)</td>
+                                <td><span class="badge text-bg-info">@request.Type</span></td>
+                                <td class="text-truncate" style="max-width: 200px;" title="@request.Comment">
+                                    @request.Comment
+                                </td>
+                                <td class="text-end pe-4">
+                                    <button class="btn btn-sm btn-success me-1" @onclick="() => UpdateStatus(request.Id, Status.Approved)">Approve</button>
+                                    <button class="btn btn-sm btn-danger" @onclick="() => UpdateStatus(request.Id, Status.Rejected)">Reject</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
         </div>
-    </div>
+
+        <div class="table-surface">
+            <div class="px-4 py-3 border-bottom">
+                <h5 class="mb-0">Request History</h5>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th class="ps-4">Employee</th>
+                            <th>Period</th>
+                            <th>Type</th>
+                            <th>Status</th>
+                            <th class="text-end pe-4">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var request in _historyRequests)
+                        {
+                            <tr>
+                                <td class="ps-4">@request.User.Name</td>
+                                <td>@request.StartDate.ToShortDateString() - @request.EndDate.ToShortDateString()</td>
+                                <td>@request.Type</td>
+                                <td>
+                                    <span class="badge @GetStatusBadgeClass(request.Status)">@request.Status</span>
+                                </td>
+                                <td class="text-end pe-4">
+                                    <button class="btn btn-sm btn-outline-danger btn-action-destructive" @onclick="() => DeleteRequest(request.Id)">Delete</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+    @if (_activeTab == "users")
+    {
+        <div class="table-surface mb-3">
+            <div class="px-4 py-3 border-bottom d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-0">Admin Profiles</h5>
+                    <p class="subtle-text mb-0">Admins with elevated access.</p>
+                </div>
+                <span class="chip">Admins @_adminUsers.Count</span>
+            </div>
+            <div class="row g-3 p-4">
+                @if (!_adminUsers.Any())
+                {
+                    <div class="col-12 text-muted">No admins found.</div>
+                }
+                @foreach (var admin in _adminUsers)
+                {
+                    <div class="col-12 col-md-6 col-lg-4">
+                        <div class="border rounded-3 p-3 h-100">
+                            <div class="d-flex align-items-center mb-2">
+                                <div class="avatar-sm bg-dark text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 36px; height: 36px; font-size: 0.85rem;">
+                                    @admin.Name[0]
+                                </div>
+                                <div>
+                                    <div class="fw-bold">@admin.Name</div>
+                                    <div class="small text-muted">@admin.Email</div>
+                                </div>
+                            </div>
+                            <div class="small text-muted">Role: @admin.Role</div>
+                            <div class="small text-muted">Quota: @admin.WeekQuota weeks, @admin.DayQuota days</div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="table-surface mb-3">
+            <div class="px-4 py-3 border-bottom">
+                <h5 class="mb-1">@(_isEditing ? "Edit User" : "Add User")</h5>
+                <p class="subtle-text mb-0">Manage employee and admin accounts.</p>
+            </div>
+            <div class="p-4">
+                <EditForm Model="_userForm" OnValidSubmit="SaveUserAsync">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+                    <div class="row g-3">
+                        <div class="col-12 col-md-6">
+                            <label class="form-label">Name</label>
+                            <InputText class="form-control" @bind-Value="_userForm.Name" />
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label">Email</label>
+                            <InputText class="form-control" @bind-Value="_userForm.Email" />
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label class="form-label">Role</label>
+                            <InputSelect class="form-select" @bind-Value="_userForm.Role">
+                                <option value="@Role.Employee">Employee</option>
+                                <option value="@Role.Admin">Admin</option>
+                            </InputSelect>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label class="form-label">Week quota</label>
+                            <InputNumber class="form-control" @bind-Value="_userForm.WeekQuota" />
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label class="form-label">Day quota</label>
+                            <InputNumber class="form-control" @bind-Value="_userForm.DayQuota" />
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrWhiteSpace(_userFormMessage))
+                    {
+                        <div class="mt-3 alert @(_userFormSuccess ? "alert-success" : "alert-danger")">
+                            @_userFormMessage
+                        </div>
+                    }
+
+                    <div class="mt-3 d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">@(_isEditing ? "Save Changes" : "Add User")</button>
+                        @if (_isEditing)
+                        {
+                            <button type="button" class="btn btn-outline-secondary" @onclick="CancelEdit">Cancel</button>
+                        }
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+
+        <div class="table-surface">
+            <div class="px-4 py-3 border-bottom d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">All Users</h5>
+                <span class="chip">Users @_users.Count</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th class="ps-4">Name</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Week quota</th>
+                            <th>Day quota</th>
+                            <th class="text-end pe-4">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!_users.Any())
+                        {
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted">No users found.</td>
+                            </tr>
+                        }
+                        @foreach (var user in _users)
+                        {
+                            <tr>
+                                <td class="ps-4">@user.Name</td>
+                                <td>@user.Email</td>
+                                <td>
+                                    <span class="badge @(user.Role == Role.Admin ? "text-bg-dark" : "text-bg-secondary")">@user.Role</span>
+                                </td>
+                                <td>@user.WeekQuota</td>
+                                <td>@user.DayQuota</td>
+                                <td class="text-end pe-4">
+                                    <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => BeginEdit(user)">Edit</button>
+                                    <button class="btn btn-sm btn-outline-danger btn-action-destructive" @onclick="() => DeleteUserAsync(user.Id)">Delete</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
 </div>
 
 @code {
     private List<VacationRequest> _allRequests = new();
     private List<VacationRequest> _pendingRequests = new();
     private List<VacationRequest> _historyRequests = new();
+    private List<User> _users = new();
+    private List<User> _adminUsers = new();
+    private string _activeTab = "requests";
+    private UserFormModel _userForm = new();
+    private bool _isEditing;
+    private bool _userFormSuccess;
+    private string? _userFormMessage;
+    private int? _editingUserId;
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadData();
+        await LoadRequests();
+        await LoadUsers();
     }
 
-    private async Task LoadData()
+    private async Task LoadRequests()
     {
         _allRequests = await VacationService.GetRequestsAsync();
         _pendingRequests = _allRequests
@@ -131,11 +292,23 @@
             .ToList();
     }
 
+    private async Task LoadUsers()
+    {
+        _users = await UserService.GetUsersAsync();
+        _adminUsers = _users.Where(u => u.Role == Role.Admin).ToList();
+    }
+
+    private void SetActiveTab(string tab)
+    {
+        _activeTab = tab;
+        _userFormMessage = null;
+    }
+
     private async Task UpdateStatus(int requestId, Status status)
     {
         if (await VacationService.UpdateStatusAsync(requestId, status))
         {
-            await LoadData();
+            await LoadRequests();
         }
     }
 
@@ -143,8 +316,70 @@
     {
         if (await VacationService.DeleteRequestAsync(requestId))
         {
-            await LoadData();
+            await LoadRequests();
         }
+    }
+
+    private void BeginEdit(User user)
+    {
+        _editingUserId = user.Id;
+        _isEditing = true;
+        _userForm = new UserFormModel
+        {
+            Name = user.Name,
+            Email = user.Email,
+            Role = user.Role,
+            WeekQuota = user.WeekQuota,
+            DayQuota = user.DayQuota
+        };
+        _userFormMessage = null;
+    }
+
+    private void CancelEdit()
+    {
+        ResetUserForm();
+        _userFormMessage = null;
+    }
+
+    private async Task SaveUserAsync()
+    {
+        _userFormMessage = null;
+        _userFormSuccess = false;
+
+        var user = new User
+        {
+            Id = _editingUserId ?? 0,
+            Name = _userForm.Name.Trim(),
+            Email = _userForm.Email.Trim(),
+            Role = _userForm.Role,
+            WeekQuota = _userForm.WeekQuota,
+            DayQuota = _userForm.DayQuota
+        };
+
+        var result = _isEditing
+            ? await UserService.UpdateUserAsync(user)
+            : await UserService.CreateUserAsync(user);
+
+        _userFormSuccess = result.Success;
+        _userFormMessage = result.Success
+            ? _isEditing ? "User updated successfully." : "User added successfully."
+            : result.ErrorMessage ?? "Unable to save user.";
+
+        if (result.Success)
+        {
+            await LoadUsers();
+            ResetUserForm();
+        }
+    }
+
+    private async Task DeleteUserAsync(int userId)
+    {
+        var result = await UserService.DeleteUserAsync(userId);
+        _userFormSuccess = result.Success;
+        _userFormMessage = result.Success
+            ? "User deleted successfully."
+            : result.ErrorMessage ?? "Unable to delete user.";
+        await LoadUsers();
     }
 
     private string GetStatusBadgeClass(Status status)
@@ -155,5 +390,35 @@
             Status.Rejected => "text-bg-danger",
             _ => "bg-secondary"
         };
+    }
+
+    private string GetTabClass(string tab)
+    {
+        return _activeTab == tab ? "active" : string.Empty;
+    }
+
+    private void ResetUserForm()
+    {
+        _isEditing = false;
+        _editingUserId = null;
+        _userForm = new UserFormModel();
+    }
+
+    private class UserFormModel
+    {
+        [Required]
+        public string Name { get; set; } = string.Empty;
+
+        [Required]
+        [EmailAddress]
+        public string Email { get; set; } = string.Empty;
+
+        public Role Role { get; set; } = Role.Employee;
+
+        [Range(0, 52)]
+        public int WeekQuota { get; set; } = 5;
+
+        [Range(0, 365)]
+        public int DayQuota { get; set; } = 5;
     }
 }
