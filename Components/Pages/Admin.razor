@@ -41,12 +41,12 @@
                 <table class="table table-hover align-middle mb-0">
                     <thead>
                         <tr>
-                            <th class="ps-4">Employee</th>
-                            <th>Period</th>
-                            <th>Days</th>
-                            <th>Type</th>
-                            <th>Comment</th>
-                            <th class="text-end pe-4">Actions</th>
+                            <th class="ps-4 text-nowrap">Employee</th>
+                            <th class="text-nowrap">Period</th>
+                            <th class="text-nowrap d-none d-md-table-cell">Days</th>
+                            <th class="text-nowrap d-none d-sm-table-cell">Type</th>
+                            <th class="text-nowrap d-none d-lg-table-cell">Comment</th>
+                            <th class="text-end pe-4 text-nowrap">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -61,24 +61,24 @@
                             <tr>
                                 <td class="ps-4">
                                     <div class="d-flex align-items-center">
-                                        <div class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px; font-size: 0.8rem;">
+                                        <div class="avatar-sm bg-primary text-white rounded-circle d-none d-sm-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px; font-size: 0.8rem;">
                                             @request.User.Name[0]
                                         </div>
                                         <div>
                                             <div class="fw-bold">@request.User.Name</div>
-                                            <div class="small text-muted">@request.User.Email</div>
+                                            <div class="small text-muted d-none d-md-block">@request.User.Email</div>
                                         </div>
                                     </div>
                                 </td>
-                                <td>
-                                    @request.StartDate.ToShortDateString() - @request.EndDate.ToShortDateString()
+                                <td class="text-nowrap">
+                                    @request.StartDate.ToString("M/d") - @request.EndDate.ToString("M/d")
                                 </td>
-                                <td>@((request.EndDate - request.StartDate).Days + 1)</td>
-                                <td><span class="badge text-bg-info">@request.Type</span></td>
-                                <td class="text-truncate" style="max-width: 200px;" title="@request.Comment">
+                                <td class="d-none d-md-table-cell">@((request.EndDate - request.StartDate).Days + 1)</td>
+                                <td class="d-none d-sm-table-cell"><span class="badge text-bg-info">@request.Type</span></td>
+                                <td class="text-truncate d-none d-lg-table-cell" style="max-width: 200px;" title="@request.Comment">
                                     @request.Comment
                                 </td>
-                                <td class="text-end pe-4">
+                                <td class="text-end pe-4 text-nowrap">
                                     <button class="btn btn-sm btn-success me-1" @onclick="() => UpdateStatus(request.Id, Status.Approved)">Approve</button>
                                     <button class="btn btn-sm btn-danger" @onclick="() => UpdateStatus(request.Id, Status.Rejected)">Reject</button>
                                 </td>
@@ -97,11 +97,11 @@
                 <table class="table table-hover align-middle mb-0">
                     <thead>
                         <tr>
-                            <th class="ps-4">Employee</th>
-                            <th>Period</th>
-                            <th>Type</th>
-                            <th>Status</th>
-                            <th class="text-end pe-4">Actions</th>
+                            <th class="ps-4 text-nowrap">Employee</th>
+                            <th class="text-nowrap">Period</th>
+                            <th class="text-nowrap d-none d-sm-table-cell">Type</th>
+                            <th class="text-nowrap">Status</th>
+                            <th class="text-end pe-4 text-nowrap">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -109,12 +109,12 @@
                         {
                             <tr>
                                 <td class="ps-4">@request.User.Name</td>
-                                <td>@request.StartDate.ToShortDateString() - @request.EndDate.ToShortDateString()</td>
-                                <td>@request.Type</td>
+                                <td class="text-nowrap">@request.StartDate.ToString("M/d") - @request.EndDate.ToString("M/d")</td>
+                                <td class="d-none d-sm-table-cell">@request.Type</td>
                                 <td>
                                     <span class="badge @GetStatusBadgeClass(request.Status)">@request.Status</span>
                                 </td>
-                                <td class="text-end pe-4">
+                                <td class="text-end pe-4 text-nowrap">
                                     <button class="btn btn-sm btn-outline-danger btn-action-destructive" @onclick="() => DeleteRequest(request.Id)">Delete</button>
                                 </td>
                             </tr>
@@ -223,12 +223,12 @@
                 <table class="table table-hover align-middle mb-0">
                     <thead>
                         <tr>
-                            <th class="ps-4">Name</th>
-                            <th>Email</th>
-                            <th>Role</th>
-                            <th>Week quota</th>
-                            <th>Day quota</th>
-                            <th class="text-end pe-4">Actions</th>
+                            <th class="ps-4 text-nowrap">Name</th>
+                            <th class="text-nowrap d-none d-md-table-cell">Email</th>
+                            <th class="text-nowrap">Role</th>
+                            <th class="text-nowrap d-none d-sm-table-cell">Weeks</th>
+                            <th class="text-nowrap d-none d-sm-table-cell">Days</th>
+                            <th class="text-end pe-4 text-nowrap">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -242,13 +242,13 @@
                         {
                             <tr>
                                 <td class="ps-4">@user.Name</td>
-                                <td>@user.Email</td>
+                                <td class="d-none d-md-table-cell">@user.Email</td>
                                 <td>
                                     <span class="badge @(user.Role == Role.Admin ? "text-bg-dark" : "text-bg-secondary")">@user.Role</span>
                                 </td>
-                                <td>@user.WeekQuota</td>
-                                <td>@user.DayQuota</td>
-                                <td class="text-end pe-4">
+                                <td class="d-none d-sm-table-cell">@user.WeekQuota</td>
+                                <td class="d-none d-sm-table-cell">@user.DayQuota</td>
+                                <td class="text-end pe-4 text-nowrap">
                                     <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => BeginEdit(user)">Edit</button>
                                     <button class="btn btn-sm btn-outline-danger btn-action-destructive" @onclick="() => DeleteUserAsync(user.Id)">Delete</button>
                                 </td>

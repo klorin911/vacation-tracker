@@ -25,7 +25,7 @@
                     <div class="stat-card__label">WEEKS USED</div>
                     <div class="stat-card__value text-success">@_weeksUsed/@_user.WeekQuota Weeks</div>
                     <div class="stat-card__meta">
-                        <div class="stat-card__subheading">Reserved weeks</div>
+                        <div class="stat-card__subheading d-none d-sm-block">Reserved weeks</div>
                         @if (_userWeekReservations.Count == 0)
                         {
                             <div class="stat-card__empty">No weeks reserved yet.</div>
@@ -56,7 +56,7 @@
                     <div class="stat-card__label">SINGLE DAYS USED</div>
                     <div class="stat-card__value text-primary">@_singleDaysUsed/@_user.DayQuota Days</div>
                     <div class="stat-card__meta">
-                        <div class="stat-card__subheading">Reserved days</div>
+                        <div class="stat-card__subheading d-none d-sm-block">Reserved days</div>
                         @if (_userDayReservations.Count == 0)
                         {
                             <div class="stat-card__empty">No days reserved yet.</div>

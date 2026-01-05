@@ -9,46 +9,44 @@
         <button class="btn btn-icon" @onclick="NextMonth"><i class="bi bi-chevron-right"></i></button>
     </div>
 
-    <div class="days-grid">
-        <div class="day-header">Mon</div>
-        <div class="day-header">Tue</div>
-        <div class="day-header">Wed</div>
-        <div class="day-header">Thu</div>
-        <div class="day-header">Fri</div>
-        <div class="day-header">Sat</div>
-        <div class="day-header">Sun</div>
+    <div class="days-grid-scroll">
+        <div class="days-grid">
+            <div class="day-header">Mon</div>
+            <div class="day-header">Tue</div>
+            <div class="day-header">Wed</div>
+            <div class="day-header">Thu</div>
+            <div class="day-header">Fri</div>
+            <div class="day-header">Sat</div>
+            <div class="day-header">Sun</div>
 
-        @foreach (var day in _days)
-        {
-            var userRequest = GetUserRequestForDate(day.Date);
-            <div class="day-cell @GetDayClass(day, userRequest)" @onclick="() => SelectDay(day)">
-                <div class="day-number">@day.Date.Day</div>
-                @if (userRequest != null)
-                {
-                    <span class="user-reserved-tag @GetUserStatusClass(userRequest.Status)">You</span>
-                }
-                @if (day.IsInMonth)
-                {
-                    <div class="day-status">
-                        @if (userRequest != null)
-                        {
-                            <span class="status-dot reserved @GetUserStatusClass(userRequest.Status)" title="Your request"></span>
-                            <small class="status-text">@userRequest.Status</small>
-                        }
-                        else if (day.IsTaken)
-                        {
-                            <span class="status-dot taken" title="Taken"></span>
-                            <small class="status-text text-danger">Taken</small>
-                        }
-                        else
-                        {
-                            <span class="status-dot available" title="Available"></span>
-                            <small class="status-text text-success">Available</small>
-                        }
-                    </div>
-                }
-            </div>
-        }
+            @foreach (var day in _days)
+            {
+                var userRequest = GetUserRequestForDate(day.Date);
+                <div class="day-cell @GetDayClass(day, userRequest)" @onclick="() => SelectDay(day)">
+                    <div class="day-number">@day.Date.Day</div>
+                    @if (day.IsInMonth)
+                    {
+                        <div class="day-status">
+                            @if (userRequest != null)
+                            {
+                                <span class="status-dot reserved @GetUserStatusClass(userRequest.Status)" title="Your request"></span>
+                                <small class="status-text">@userRequest.Status</small>
+                            }
+                            else if (day.IsTaken)
+                            {
+                                <span class="status-dot taken" title="Taken"></span>
+                                <small class="status-text text-danger">Taken</small>
+                            }
+                            else
+                            {
+                                <span class="status-dot available" title="Available"></span>
+                                <small class="status-text text-success">Available</small>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        </div>
     </div>
 </div>
 
@@ -154,106 +152,3 @@
         public bool IsTaken { get; set; }
     }
 }
-
-<style>
-    .days-grid {
-        display: grid;
-        grid-template-columns: repeat(7, 1fr);
-        gap: 1px;
-        background: var(--border);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-md);
-        overflow: hidden;
-    }
-    .day-header {
-        background: var(--surface-2);
-        padding: 0.75rem;
-        text-align: center;
-        font-weight: 700;
-        font-size: 0.8rem;
-        color: var(--ink-500);
-        text-transform: uppercase;
-    }
-    .day-cell {
-        background: var(--surface-2);
-        min-height: 80px;
-        padding: 0.5rem;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        cursor: pointer;
-        transition: background 0.2s;
-        position: relative;
-    }
-    .day-cell:hover:not(.outside):not(.taken-cell):not(.user-reserved) {
-        background: var(--surface-3);
-    }
-    .day-cell.outside {
-        background: var(--surface-2);
-        opacity: 0.3;
-        cursor: default;
-    }
-
-    [data-theme="dark"] .day-cell.outside {
-        opacity: 0.5;
-    }
-    .day-cell.taken-cell {
-        background: var(--surface-2);
-        cursor: not-allowed;
-    }
-    .day-cell.today {
-        border: 2px solid var(--accent-500);
-        z-index: 1;
-    }
-    .day-number {
-        font-weight: 700;
-        margin-bottom: 0.5rem;
-    }
-    .day-status {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 0.25rem;
-    }
-    .status-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-    }
-    .status-dot.available { background: var(--success); }
-    .status-dot.taken { background: var(--danger); }
-    .status-text { font-size: 0.7rem; font-weight: 600; }
-
-    .status-dot.reserved { background: var(--accent-500); }
-    .status-dot.reserved.pending { background: var(--ink-500); }
-
-    .user-reserved-tag {
-        position: absolute;
-        top: 0.4rem;
-        right: 0.4rem;
-        padding: 0.1rem 0.4rem;
-        border-radius: 999px;
-        font-size: 0.55rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        border: 1px solid var(--accent-500);
-        background: var(--accent-100);
-        color: var(--accent-600);
-    }
-
-    .user-reserved-tag.pending {
-        border-style: dashed;
-        background: var(--surface-3);
-        color: var(--ink-700);
-    }
-
-    .day-cell.user-reserved {
-        box-shadow: inset 0 0 0 2px var(--accent-500);
-        cursor: not-allowed;
-    }
-
-    .day-cell.user-reserved.user-pending {
-        background: var(--surface-3);
-    }
-</style>

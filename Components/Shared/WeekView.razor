@@ -9,49 +9,51 @@
         <button class="btn btn-icon" @onclick="NextMonth"><i class="bi bi-chevron-right"></i></button>
     </div>
 
-    <div class="calendar-weeks-grid">
-        <div class="week-header">Week</div>
-        <div class="week-header">Mon</div>
-        <div class="week-header">Tue</div>
-        <div class="week-header">Wed</div>
-        <div class="week-header">Thu</div>
-        <div class="week-header">Fri</div>
-        <div class="week-header">Sat</div>
-        <div class="week-header">Sun</div>
+    <div class="calendar-weeks-scroll">
+        <div class="calendar-weeks-grid">
+            <div class="week-header">Week</div>
+            <div class="week-header">Mon</div>
+            <div class="week-header">Tue</div>
+            <div class="week-header">Wed</div>
+            <div class="week-header">Thu</div>
+            <div class="week-header">Fri</div>
+            <div class="week-header">Sat</div>
+            <div class="week-header">Sun</div>
 
-        @foreach (var week in _weeks)
-        {
-            var userWeekRequest = GetUserWeekRequest(week.Start, week.End);
-            var hasUserOverlap = HasUserOverlap(week.Start, week.End);
-            <div class="week-row @(week.IsFull ? "full" : "") @(hasUserOverlap ? "user-blocked" : "") @(userWeekRequest != null ? "user-week" : "")" @onclick="() => SelectWeek(week)">
-                <!-- Week Info Column -->
-                <div class="week-info-cell">
-                    <div class="week-number">W@(week.WeekNumber)</div>
-                    <div class="week-spots">
-                        <span class="badge @(week.IsFull ? "bg-danger" : "bg-success")">
-                            @week.Taken/@week.Total
-                        </span>
+            @foreach (var week in _weeks)
+            {
+                var userWeekRequest = GetUserWeekRequest(week.Start, week.End);
+                var hasUserOverlap = HasUserOverlap(week.Start, week.End);
+                <div class="week-row @(week.IsFull ? "full" : "") @(hasUserOverlap ? "user-blocked" : "") @(userWeekRequest != null ? "user-week" : "")" @onclick="() => SelectWeek(week)">
+                    <!-- Week Info Column -->
+                    <div class="week-info-cell">
+                        <div class="week-number">W@(week.WeekNumber)</div>
+                        <div class="week-spots">
+                            <span class="badge @(week.IsFull ? "bg-danger" : "bg-success")">
+                                @week.Taken/@week.Total
+                            </span>
+                        </div>
                     </div>
+
+                    <!-- Days Columns -->
+                    @foreach (var day in week.Days)
+                    {
+                        var userDayRequest = GetUserDayRequestForDate(day);
+                        <div class="day-cell @(day.Month != _currentMonth.Month ? "outside" : "") @(day.Date == DateTime.Today ? "today" : "") @(userDayRequest != null ? "user-day" : "")">
+                            <div class="day-number">@day.Day</div>
+                            @if (day.DayOfWeek == DayOfWeek.Monday && userWeekRequest != null)
+                            {
+                                <span class="user-week-tag @GetUserStatusClass(userWeekRequest.Status)">Your week</span>
+                            }
+                            @if (userDayRequest != null)
+                            {
+                                <span class="user-day-tag @GetUserStatusClass(userDayRequest.Status)">You</span>
+                            }
+                        </div>
+                    }
                 </div>
-
-                <!-- Days Columns -->
-                @foreach (var day in week.Days)
-                {
-                    var userDayRequest = GetUserDayRequestForDate(day);
-                    <div class="day-cell @(day.Month != _currentMonth.Month ? "outside" : "") @(day.Date == DateTime.Today ? "today" : "") @(userDayRequest != null ? "user-day" : "")">
-                        <div class="day-number">@day.Day</div>
-                        @if (day.DayOfWeek == DayOfWeek.Monday && userWeekRequest != null)
-                        {
-                            <span class="user-week-tag @GetUserStatusClass(userWeekRequest.Status)">Your week</span>
-                        }
-                        @if (userDayRequest != null)
-                        {
-                            <span class="user-day-tag @GetUserStatusClass(userDayRequest.Status)">You</span>
-                        }
-                    </div>
-                }
-            </div>
-        }
+            }
+        </div>
     </div>
 </div>
 
@@ -173,166 +175,3 @@
         public bool IsFull => Taken >= Total;
     }
 }
-
-<style>
-    .calendar-weeks-grid {
-        display: grid;
-        grid-template-columns: 80px repeat(7, 1fr);
-        gap: 1px;
-        background: var(--border);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-md);
-        overflow: hidden;
-    }
-
-    .week-header {
-        background: var(--surface-2);
-        padding: 0.75rem;
-        text-align: center;
-        font-weight: 700;
-        font-size: 0.8rem;
-        color: var(--ink-500);
-        text-transform: uppercase;
-    }
-
-    .week-row {
-        display: contents; /* Allows children to participate in the parent grid */
-        cursor: pointer;
-    }
-
-    .week-info-cell, .day-cell {
-        background: var(--surface-2);
-        min-height: 80px;
-        padding: 0.5rem;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        transition: background 0.2s;
-        position: relative;
-    }
-
-    .week-info-cell {
-        background: var(--surface-2);
-        justify-content: center;
-        border-right: 1px solid var(--border);
-    }
-
-    .week-number {
-        font-weight: 800;
-        font-size: 1.1rem;
-        color: var(--ink-900);
-    }
-
-    .week-spots {
-        margin-top: 0.25rem;
-    }
-
-    .day-number {
-        font-weight: 700;
-        color: var(--ink-700);
-    }
-
-    .day-cell.outside {
-        background: var(--surface-2);
-        opacity: 0.3;
-    }
-
-    [data-theme="dark"] .day-cell.outside {
-        opacity: 0.5;
-    }
-
-    .day-cell.today {
-        position: relative;
-    }
-    
-    .day-cell.today::after {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        border: 2px solid var(--accent-500);
-        pointer-events: none;
-    }
-
-    /* Row hover effect */
-    .week-row:hover .week-info-cell,
-    .week-row:hover .day-cell:not(.outside) {
-        background: var(--surface-3);
-    }
-
-    .week-row.full {
-        cursor: not-allowed;
-    }
-
-    .week-row.full .week-info-cell,
-    .week-row.full .day-cell {
-        background: var(--surface-2);
-        opacity: 0.6;
-    }
-
-    [data-theme="dark"] .week-row.full .week-info-cell,
-    [data-theme="dark"] .week-row.full .day-cell {
-        opacity: 0.75;
-    }
-
-    .week-row.user-blocked .week-info-cell,
-    .week-row.user-blocked .day-cell {
-        cursor: not-allowed;
-    }
-
-    .week-row.user-week .week-info-cell {
-        box-shadow: inset 0 0 0 2px var(--accent-500);
-        background: var(--accent-100);
-    }
-
-    .week-row.user-week .day-cell {
-        box-shadow: inset 0 0 0 2px var(--accent-500);
-    }
-
-    .day-cell.user-day {
-        box-shadow: inset 0 0 0 2px var(--accent-500);
-    }
-
-    .user-week-tag,
-    .user-day-tag {
-        margin-top: 0.35rem;
-        padding: 0.1rem 0.35rem;
-        border-radius: 999px;
-        font-size: 0.5rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        border: 1px solid var(--accent-500);
-        background: var(--accent-100);
-        color: var(--accent-600);
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
-        align-self: center;
-        white-space: nowrap;
-    }
-
-    .week-info-cell .user-week-tag {
-        position: absolute;
-        left: 50%;
-        bottom: 0.45rem;
-        transform: translateX(-50%);
-        margin-top: 0;
-        pointer-events: none;
-    }
-
-    .user-week-tag.pending,
-    .user-day-tag.pending {
-        border-style: dashed;
-        background: var(--surface-3);
-        color: var(--ink-700);
-    }
-
-    .badge {
-        font-size: 0.7rem;
-        padding: 0.25rem 0.5rem;
-    }
-</style>

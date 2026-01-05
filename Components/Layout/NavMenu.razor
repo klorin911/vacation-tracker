@@ -21,6 +21,19 @@
                     <AuthorizeView Roles="@nameof(Role.Admin)">
                         <NavLink class="app-nav__link" href="admin">Admin</NavLink>
                     </AuthorizeView>
+                    <div class="app-nav__mobile-only">
+                        <div class="app-nav__divider"></div>
+                        <div class="app-nav__mobile-theme-row">
+                            <ThemeToggle />
+                        </div>
+                        <div class="app-nav__divider"></div>
+                        <div class="app-nav__mobile-footer">
+                            <span class="app-nav__mobile-user-info">@GetDisplayName(navContext.User)</span>
+                            <a class="app-nav__mobile-logout" href="logout">
+                                <i class="bi bi-box-arrow-right me-1"></i> Logout
+                            </a>
+                        </div>
+                    </div>
                 </Authorized>
                 <NotAuthorized>
                     <NavLink class="app-nav__link app-nav__link--cta" href="login">Login</NavLink>
@@ -33,10 +46,8 @@
             <AuthorizeView Context="authContext">
                 <Authorized>
                     @{
-                        var displayName = authContext.User.Identity?.Name
-                            ?? authContext.User.FindFirst(ClaimTypes.Email)?.Value
-                            ?? "Account";
-                        var initial = displayName.Length > 0 ? displayName.Substring(0, 1).ToUpperInvariant() : "U";
+                        var displayName = GetDisplayName(authContext.User);
+                        var initial = GetInitial(displayName);
                     }
                     <details class="app-nav__dropdown">
                         <summary class="app-nav__user">
@@ -60,5 +71,17 @@
         {
             await JS.InvokeVoidAsync("vacationTracker.initNavDropdowns");
         }
+    }
+
+    private static string GetDisplayName(ClaimsPrincipal user)
+    {
+        return user.Identity?.Name
+            ?? user.FindFirst(ClaimTypes.Email)?.Value
+            ?? "Account";
+    }
+
+    private static string GetInitial(string displayName)
+    {
+        return displayName.Length > 0 ? displayName.Substring(0, 1).ToUpperInvariant() : "U";
     }
 }
