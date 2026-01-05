@@ -44,6 +44,32 @@
     filter: brightness(1.05);
 }
 
+[data-theme="dark"] .view-toggle .btn-group {
+    background: var(--surface-2);
+    border-color: var(--border-default);
+    box-shadow: var(--shadow-sm);
+}
+
+[data-theme="dark"] .view-toggle .btn-outline-primary {
+    color: var(--text-secondary);
+}
+
+[data-theme="dark"] .view-toggle .btn-outline-primary:hover {
+    background: var(--surface-3);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .view-toggle .btn-primary {
+    background: var(--surface-4);
+    color: var(--text-primary);
+    box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+
+[data-theme="dark"] .view-toggle .btn-primary:hover {
+    background: var(--surface-6);
+    filter: none;
+}
+
 @media (max-width: 720px) {
     .view-toggle,
     .view-toggle .btn-group {

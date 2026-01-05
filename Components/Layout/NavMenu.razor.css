@@ -14,13 +14,13 @@
 
 [data-theme="dark"] .app-nav {
     --nav-bg: var(--header-bg);
-    --nav-border: var(--border);
+    --nav-border: var(--border-default);
     --nav-ink: var(--ink-900);
-    --nav-link: var(--ink-700);
-    --nav-link-muted: var(--ink-500);
-    --nav-surface: rgba(255, 255, 255, 0.06);
-    --nav-surface-hover: rgba(255, 255, 255, 0.12);
-    box-shadow: 0 10px 24px rgba(2, 6, 23, 0.4);
+    --nav-link: var(--text-secondary);
+    --nav-link-muted: var(--text-disabled);
+    --nav-surface: rgba(255, 255, 255, 0.04);
+    --nav-surface-hover: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .app-nav__inner {
@@ -82,6 +82,18 @@
     background: var(--accent-500);
     transform: translateY(-1px);
     box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
+}
+
+[data-theme="dark"] .app-nav__link--cta {
+    color: var(--text-primary);
+    background: var(--accent-primary);
+    box-shadow: none;
+}
+
+[data-theme="dark"] .app-nav__link--cta:hover {
+    background: var(--accent-500);
+    box-shadow: none;
+    transform: none;
 }
 
 .app-nav__actions {
@@ -148,6 +160,10 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
+[data-theme="dark"] .app-nav__avatar {
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
 .app-nav__menu {
     position: absolute;
     right: 0;
@@ -163,6 +179,12 @@
     pointer-events: none;
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     z-index: 100;
+}
+
+[data-theme="dark"] .app-nav__menu {
+    background: var(--surface-8);
+    border-color: var(--border-default);
+    box-shadow: var(--shadow-sm);
 }
 
 .app-nav__dropdown[open] .app-nav__menu {
@@ -185,6 +207,10 @@
 .app-nav__menu-item:hover {
     background: var(--surface-3);
     color: var(--ink-900);
+}
+
+[data-theme="dark"] .app-nav__menu-item:hover {
+    background: var(--surface-6);
 }
 
 .app-nav__toggle {
@@ -238,6 +264,12 @@
         padding: 0.75rem 1rem;
         border-radius: var(--radius-md);
         border: 1px solid var(--border);
+        box-shadow: var(--shadow-sm);
+    }
+
+    [data-theme="dark"] .app-nav__links {
+        background: var(--surface-8);
+        border-color: var(--border-default);
         box-shadow: var(--shadow-sm);
     }
 
