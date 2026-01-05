@@ -41,24 +41,16 @@ using (var scope = app.Services.CreateScope())
     {
         context.Users.Add(new VacationTracker.Data.Entities.User
         {
-            Email = "kylerlorin@gmail.com",
-            Name = "Kyler Lorin",
-            Role = VacationTracker.Data.Entities.Role.Admin,
-            WeekQuota = 2,
-            DayQuota = 2
-        });
-        context.Users.Add(new VacationTracker.Data.Entities.User
-        {
             Email = "admin@example.com",
-            Name = "Employee User",
+            Name = "Admin User",
             Role = VacationTracker.Data.Entities.Role.Admin,
             WeekQuota = 5,
             DayQuota = 5
         });
         context.Users.Add(new VacationTracker.Data.Entities.User
         {
-            Email = "user@example.com",
-            Name = "Normal User",
+            Email = "employee@example.com",
+            Name = "Employee User",
             Role = VacationTracker.Data.Entities.Role.Employee,
             WeekQuota = 5,
             DayQuota = 5
