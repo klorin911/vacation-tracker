@@ -177,27 +177,46 @@
         if (_user != null)
         {
             _userRequests = await VacationService.GetRequestsByUserAsync(_user.Id);
-            
-            var vacationRequests = _userRequests
-                .Where(r => r.Type == RequestType.Vacation)
-                .ToList();
 
-            var approvedVacations = vacationRequests
-                .Where(r => r.Status == Status.Approved)
-                .ToList();
+            _weeksUsed = 0;
+            _singleDaysUsed = 0;
+            _userWeekReservations = new List<VacationRequest>();
+            _userDayReservations = new List<VacationRequest>();
 
-            _weeksUsed = approvedVacations.Count(r => r.IsWeekBooking);
-            _singleDaysUsed = approvedVacations.Count(r => !r.IsWeekBooking);
+            foreach (var request in _userRequests)
+            {
+                if (request.Type != RequestType.Vacation)
+                {
+                    continue;
+                }
 
-            _userWeekReservations = vacationRequests
-                .Where(r => r.IsWeekBooking && r.Status != Status.Rejected)
-                .OrderBy(r => r.StartDate)
-                .ToList();
+                if (request.Status == Status.Approved)
+                {
+                    if (request.IsWeekBooking)
+                    {
+                        _weeksUsed++;
+                    }
+                    else
+                    {
+                        _singleDaysUsed++;
+                    }
+                }
 
-            _userDayReservations = vacationRequests
-                .Where(r => !r.IsWeekBooking && r.Status != Status.Rejected)
-                .OrderBy(r => r.StartDate)
-                .ToList();
+                if (request.Status != Status.Rejected)
+                {
+                    if (request.IsWeekBooking)
+                    {
+                        _userWeekReservations.Add(request);
+                    }
+                    else
+                    {
+                        _userDayReservations.Add(request);
+                    }
+                }
+            }
+
+            _userWeekReservations.Sort((left, right) => left.StartDate.CompareTo(right.StartDate));
+            _userDayReservations.Sort((left, right) => left.StartDate.CompareTo(right.StartDate));
         }
     }
 

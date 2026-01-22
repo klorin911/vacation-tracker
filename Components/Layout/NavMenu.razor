@@ -1,7 +1,15 @@
 @using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
 @using VacationTracker.Components.Shared
 @using VacationTracker.Data.Entities
+@using VacationTracker.Auth
+@using VacationTracker.Services
+@inject IUserService UserService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager NavigationManager
+@inject IWebHostEnvironment Environment
 @inject IJSRuntime JS
+@implements IDisposable
 
 <div class="app-nav">
     <div class="app-nav__inner">
@@ -18,8 +26,10 @@
             <AuthorizeView>
                 <Authorized Context="navContext">
                     <NavLink class="app-nav__link" href="dashboard">Dashboard</NavLink>
+                    <NavLink class="app-nav__link" href="draft">Draft</NavLink>
                     <AuthorizeView Roles="@nameof(Role.Admin)">
                         <NavLink class="app-nav__link" href="admin">Admin</NavLink>
+                        <NavLink class="app-nav__link" href="admin/draft">Admin Draft</NavLink>
                     </AuthorizeView>
                     <div class="app-nav__mobile-only">
                         <div class="app-nav__divider"></div>
@@ -55,6 +65,43 @@
                             <span class="app-nav__user-name">@displayName</span>
                         </summary>
                         <div class="app-nav__menu">
+                            @if (_showQuickSwitch)
+                            {
+                                <div class="app-nav__menu-section">
+                                    <div class="app-nav__menu-label">Quick switch (dev)</div>
+                                    @if (_switchAdmins.Any())
+                                    {
+                                        <div class="app-nav__menu-group">Admins</div>
+                                        @foreach (var admin in _switchAdmins)
+                                        {
+                                            <button type="button"
+                                                    class="app-nav__menu-item app-nav__menu-item--button"
+                                                    disabled="@_isSwitching"
+                                                    @onclick="() => SwitchUser(admin.Email)">
+                                                @admin.Name
+                                            </button>
+                                        }
+                                    }
+                                    @if (_switchDispatchers.Any())
+                                    {
+                                        <div class="app-nav__menu-group">Dispatchers</div>
+                                        @foreach (var dispatcher in _switchDispatchers)
+                                        {
+                                            <button type="button"
+                                                    class="app-nav__menu-item app-nav__menu-item--button"
+                                                    disabled="@_isSwitching"
+                                                    @onclick="() => SwitchUser(dispatcher.Email)">
+                                                @dispatcher.Name
+                                            </button>
+                                        }
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(_switchError))
+                                    {
+                                        <div class="app-nav__menu-error">@_switchError</div>
+                                    }
+                                </div>
+                                <div class="app-nav__divider"></div>
+                            }
                             <a class="app-nav__menu-item" href="logout">Logout</a>
                         </div>
                     </details>
@@ -73,6 +120,24 @@
         }
     }
 
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Environment.IsDevelopment())
+        {
+            return;
+        }
+
+        AuthStateProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;
+
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        await TryLoadQuickSwitchAsync(authState.User);
+    }
+
+    public void Dispose()
+    {
+        AuthStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;
+    }
+
     private static string GetDisplayName(ClaimsPrincipal user)
     {
         return user.Identity?.Name
@@ -84,4 +149,84 @@
     {
         return displayName.Length > 0 ? displayName.Substring(0, 1).ToUpperInvariant() : "U";
     }
+
+    private async Task SwitchUser(string email)
+    {
+        _switchError = "";
+        _isSwitching = true;
+
+        try
+        {
+            if (AuthStateProvider is not CustomAuthStateProvider customAuthStateProvider)
+            {
+                _switchError = "Auth provider is not configured correctly.";
+                return;
+            }
+
+            var user = await UserService.GetUserByEmailAsync(email);
+            if (user == null)
+            {
+                _switchError = "User not found.";
+                return;
+            }
+
+            await customAuthStateProvider.UpdateAuthenticationState(email);
+            await JS.InvokeVoidAsync("vacationTracker.setCookie", "vt_user", email, 7);
+            NavigationManager.NavigateTo("/dashboard", forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            _switchError = $"Switch failed: {ex.Message}";
+        }
+        finally
+        {
+            _isSwitching = false;
+        }
+    }
+
+    private async void OnAuthenticationStateChanged(Task<AuthenticationState> authStateTask)
+    {
+        var authState = await authStateTask;
+        await InvokeAsync(async () =>
+        {
+            await TryLoadQuickSwitchAsync(authState.User);
+            StateHasChanged();
+        });
+    }
+
+    private async Task TryLoadQuickSwitchAsync(ClaimsPrincipal user)
+    {
+        if (_quickSwitchLoaded || _isLoadingQuickSwitch)
+        {
+            return;
+        }
+
+        if (user.Identity?.IsAuthenticated != true)
+        {
+            return;
+        }
+
+        _isLoadingQuickSwitch = true;
+
+        try
+        {
+            var users = await UserService.GetUsersAsync();
+            _switchAdmins = users.Where(u => u.Role == Role.Admin).ToList();
+            _switchDispatchers = users.Where(u => u.Role == Role.Dispatcher).ToList();
+            _showQuickSwitch = _switchAdmins.Count > 0 || _switchDispatchers.Count > 0;
+            _quickSwitchLoaded = true;
+        }
+        finally
+        {
+            _isLoadingQuickSwitch = false;
+        }
+    }
+
+    private List<User> _switchAdmins = new();
+    private List<User> _switchDispatchers = new();
+    private string _switchError = "";
+    private bool _isSwitching;
+    private bool _showQuickSwitch;
+    private bool _quickSwitchLoaded;
+    private bool _isLoadingQuickSwitch;
 }

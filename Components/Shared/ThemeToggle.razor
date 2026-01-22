@@ -39,9 +39,8 @@
             var theme = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "theme");
             if (string.IsNullOrEmpty(theme))
             {
-                // Respect system preference
-                var systemDark = await JSRuntime.InvokeAsync<bool>("eval", "window.matchMedia('(prefers-color-scheme: dark)').matches");
-                _isDarkMode = systemDark;
+                var systemTheme = await JSRuntime.InvokeAsync<string>("vacationTracker.getSystemTheme");
+                _isDarkMode = systemTheme == "dark";
             }
             else
             {

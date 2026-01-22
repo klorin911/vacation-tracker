@@ -1,0 +1,177 @@
+@page "/admin/draft"
+@using Microsoft.AspNetCore.Authorization
+@using VacationTracker.Data.Entities
+@using VacationTracker.Services
+@attribute [Authorize(Roles = nameof(Role.Admin))]
+@inject IDraftService DraftService
+@inject IUserService UserService
+@implements IDisposable
+
+<div class="app-section">
+    <div class="app-toolbar">
+        <div>
+            <h2 class="page-title mb-1">Draft Management</h2>
+            <p class="subtle-text mb-0">Control the vacation draft session.</p>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-md-4">
+            <div class="surface-card p-4">
+                <h5 class="mb-3">Draft Controls</h5>
+                @if (_session == null)
+                {
+                    <div class="mb-3">
+                        <label class="form-label small text-uppercase fw-bold text-muted" style="font-size: 0.75rem; letter-spacing: 0.5px;">Schedule Start (Optional)</label>
+                        <input type="datetime-local" class="form-control" @bind="_scheduledStartLocal" />
+                        <div class="form-text text-muted" style="font-size: 0.8rem;">Leave blank to start immediately.</div>
+                    </div>
+                    <button class="btn btn-primary w-100 mb-2 fw-bold" @onclick="StartDraft">
+                        @(_scheduledStartLocal.HasValue ? "SCHEDULE DRAFT" : "START NEW DRAFT")
+                    </button>
+                    <p class="small text-muted">This will initialize the draft for all dispatchers based on badge seniority.</p>
+                }
+                else if (_session.IsActive)
+                {
+                    @if (_session.IsPaused)
+                    {
+                        <button class="btn btn-success w-100 mb-2" @onclick="ResumeDraft">RESUME DRAFT</button>
+                    }
+                    else
+                    {
+                        <button class="btn btn-warning w-100 mb-2" @onclick="PauseDraft">PAUSE DRAFT</button>
+                    }
+                    <button class="btn btn-danger w-100 mb-2" @onclick="ResetDraft">RESET/ABORT DRAFT</button>
+                }
+                else if (_session.ScheduledStartTime.HasValue && !_session.EndTime.HasValue)
+                {
+                    <div class="alert alert-info border-0 bg-info bg-opacity-10">
+                        <h6 class="alert-heading fw-bold mb-1 text-info">Draft Scheduled</h6>
+                        <p class="mb-0 small text-dark">Starts: @_session.ScheduledStartTime.Value.ToLocalTime().ToString("g")</p>
+                    </div>
+                    <button class="btn btn-outline-danger w-100" @onclick="ResetDraft">CANCEL SCHEDULE</button>
+                }
+                else
+                {
+                    <div class="alert alert-info">Draft Completed on @_session.EndTime?.ToLocalTime().ToString("g")</div>
+                    <button class="btn btn-outline-danger w-100" @onclick="ResetDraft">RESET FOR NEW DRAFT</button>
+                }
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="surface-card">
+                <div class="px-4 py-3 border-bottom d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Dispatcher Seniority Order</h5>
+                    <span class="badge bg-secondary">@_dispatchers.Count Dispatchers</span>
+                </div>
+                
+                @if (!_dispatchers.Any())
+                {
+                    <div class="px-4 py-3 text-center">
+                        <p class="text-muted">No dispatchers found. Users must have the Dispatcher role to participate.</p>
+                        <a href="/admin" class="btn btn-outline-primary">Go to Admin Panel</a>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th class="ps-4">Order</th>
+                                    <th>Badge #</th>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th class="text-end pe-4">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @for (int i = 0; i < _dispatchers.Count; i++)
+                                {
+                                    var d = _dispatchers[i];
+                                    <tr class="@(d.Id == _session?.CurrentUserId ? "table-primary" : "")">
+                                        <td class="ps-4">@(i + 1)</td>
+                                        <td>@d.BadgeNumber</td>
+                                        <td>@d.Name</td>
+                                        <td>@d.Email</td>
+                                        <td class="text-end pe-4">
+                                            @if (d.Id == _session?.CurrentUserId)
+                                            {
+                                                <span class="badge bg-primary pulse">PICKING NOW</span>
+                                            }
+                                            else if (_session != null && _session.IsActive)
+                                            {
+                                                <span class="text-muted">Waiting</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .pulse {
+        animation: pulse-animation 2s infinite;
+    }
+    @@keyframes pulse-animation {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
+    }
+</style>
+
+@code {
+    private DraftSession? _session;
+    private List<User> _dispatchers = new();
+    private DateTime? _scheduledStartLocal;
+
+    protected override async Task OnInitializedAsync()
+    {
+        DraftService.OnDraftUpdated += HandleDraftUpdated;
+        await LoadData();
+    }
+
+    private void HandleDraftUpdated()
+    {
+        _ = InvokeAsync(async () =>
+        {
+            await LoadData();
+            StateHasChanged();
+        });
+    }
+
+    private async Task LoadData()
+    {
+        _session = await DraftService.GetLatestSessionAsync();
+        _dispatchers = await DraftService.GetDispatcherOrderAsync();
+    }
+
+    private async Task StartDraft()
+    {
+        DateTime? scheduledStartUtc = null;
+        if (_scheduledStartLocal.HasValue)
+        {
+            scheduledStartUtc = DateTime.SpecifyKind(_scheduledStartLocal.Value, DateTimeKind.Local)
+                .ToUniversalTime();
+        }
+
+        var result = await DraftService.StartDraftAsync(scheduledStartUtc);
+        if (result.Success) await LoadData();
+    }
+
+    private async Task PauseDraft() => await DraftService.PauseDraftAsync();
+    private async Task ResumeDraft() => await DraftService.ResumeDraftAsync();
+    private async Task ResetDraft() => await DraftService.ResetDraftAsync();
+
+    public void Dispose()
+    {
+        DraftService.OnDraftUpdated -= HandleDraftUpdated;
+    }
+}

@@ -184,7 +184,12 @@
                             <InputSelect class="form-select" @bind-Value="_userForm.Role">
                                 <option value="@Role.Employee">Employee</option>
                                 <option value="@Role.Admin">Admin</option>
+                                <option value="@Role.Dispatcher">Dispatcher</option>
                             </InputSelect>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label class="form-label">Badge Number</label>
+                            <InputNumber class="form-control" @bind-Value="_userForm.BadgeNumber" />
                         </div>
                         <div class="col-12 col-md-4">
                             <label class="form-label">Week quota</label>
@@ -226,6 +231,7 @@
                             <th class="ps-4 text-nowrap">Name</th>
                             <th class="text-nowrap d-none d-md-table-cell">Email</th>
                             <th class="text-nowrap">Role</th>
+                            <th class="text-nowrap">Badge</th>
                             <th class="text-nowrap d-none d-sm-table-cell">Weeks</th>
                             <th class="text-nowrap d-none d-sm-table-cell">Days</th>
                             <th class="text-end pe-4 text-nowrap">Actions</th>
@@ -235,7 +241,7 @@
                         @if (!_users.Any())
                         {
                             <tr>
-                                <td colspan="6" class="text-center py-4 text-muted">No users found.</td>
+                                <td colspan="7" class="text-center py-4 text-muted">No users found.</td>
                             </tr>
                         }
                         @foreach (var user in _users)
@@ -244,8 +250,9 @@
                                 <td class="ps-4">@user.Name</td>
                                 <td class="d-none d-md-table-cell">@user.Email</td>
                                 <td>
-                                    <span class="badge @(user.Role == Role.Admin ? "text-bg-dark" : "text-bg-secondary")">@user.Role</span>
+                                    <span class="badge @GetRoleBadgeClass(user.Role)">@user.Role</span>
                                 </td>
+                                <td>@user.BadgeNumber</td>
                                 <td class="d-none d-sm-table-cell">@user.WeekQuota</td>
                                 <td class="d-none d-sm-table-cell">@user.DayQuota</td>
                                 <td class="text-end pe-4 text-nowrap">
@@ -283,19 +290,35 @@
     private async Task LoadRequests()
     {
         _allRequests = await VacationService.GetRequestsAsync();
-        _pendingRequests = _allRequests
-            .Where(r => r.Status == Status.Pending)
-            .ToList();
-        _historyRequests = _allRequests
-            .Where(r => r.Status != Status.Pending)
-            .OrderByDescending(r => r.CreatedAt)
-            .ToList();
+        _pendingRequests = new List<VacationRequest>();
+        _historyRequests = new List<VacationRequest>();
+
+        foreach (var request in _allRequests)
+        {
+            if (request.Status == Status.Pending)
+            {
+                _pendingRequests.Add(request);
+            }
+            else
+            {
+                _historyRequests.Add(request);
+            }
+        }
+
+        _historyRequests.Sort((left, right) => right.CreatedAt.CompareTo(left.CreatedAt));
     }
 
     private async Task LoadUsers()
     {
         _users = await UserService.GetUsersAsync();
-        _adminUsers = _users.Where(u => u.Role == Role.Admin).ToList();
+        _adminUsers = new List<User>();
+        foreach (var user in _users)
+        {
+            if (user.Role == Role.Admin)
+            {
+                _adminUsers.Add(user);
+            }
+        }
     }
 
     private void SetActiveTab(string tab)
@@ -329,6 +352,7 @@
             Name = user.Name,
             Email = user.Email,
             Role = user.Role,
+            BadgeNumber = user.BadgeNumber,
             WeekQuota = user.WeekQuota,
             DayQuota = user.DayQuota
         };
@@ -352,6 +376,7 @@
             Name = _userForm.Name.Trim(),
             Email = _userForm.Email.Trim(),
             Role = _userForm.Role,
+            BadgeNumber = _userForm.BadgeNumber,
             WeekQuota = _userForm.WeekQuota,
             DayQuota = _userForm.DayQuota
         };
@@ -392,6 +417,16 @@
         };
     }
 
+    private string GetRoleBadgeClass(Role role)
+    {
+        return role switch
+        {
+            Role.Admin => "text-bg-dark",
+            Role.Dispatcher => "text-bg-primary",
+            _ => "text-bg-secondary"
+        };
+    }
+
     private string GetTabClass(string tab)
     {
         return _activeTab == tab ? "active" : string.Empty;
@@ -414,6 +449,8 @@
         public string Email { get; set; } = string.Empty;
 
         public Role Role { get; set; } = Role.Employee;
+
+        public int BadgeNumber { get; set; }
 
         [Range(0, 52)]
         public int WeekQuota { get; set; } = 5;

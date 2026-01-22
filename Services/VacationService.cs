@@ -19,18 +19,19 @@ public interface IVacationService
 
 public class VacationService : IVacationService
 {
-    private readonly ApplicationDbContext _context;
+    private readonly IDbContextFactory<ApplicationDbContext> _contextFactory;
     private const int MaxWeeklyVacations = 5;
     private const int MaxDailyVacations = 1;
 
-    public VacationService(ApplicationDbContext context)
+    public VacationService(IDbContextFactory<ApplicationDbContext> contextFactory)
     {
-        _context = context;
+        _contextFactory = contextFactory;
     }
 
     public async Task<List<VacationRequest>> GetRequestsAsync()
     {
-        return await _context.VacationRequests
+        using var context = _contextFactory.CreateDbContext();
+        return await context.VacationRequests
             .AsNoTracking()
             .Include(r => r.User)
             .OrderByDescending(r => r.StartDate)
@@ -39,7 +40,8 @@ public class VacationService : IVacationService
 
     public async Task<List<VacationRequest>> GetRequestsByUserAsync(int userId)
     {
-        return await _context.VacationRequests
+        using var context = _contextFactory.CreateDbContext();
+        return await context.VacationRequests
             .AsNoTracking()
             .Where(r => r.UserId == userId)
             .OrderByDescending(r => r.StartDate)
@@ -48,8 +50,9 @@ public class VacationService : IVacationService
 
     public async Task<(int Taken, int Total)> GetAvailabilityAsync(DateTime date)
     {
+        using var context = _contextFactory.CreateDbContext();
         var targetDate = date.Date;
-        var taken = await _context.VacationRequests
+        var taken = await context.VacationRequests
             .AsNoTracking()
             .Where(r => r.Status == Status.Approved && !r.IsWeekBooking && r.StartDate.Date <= targetDate && r.EndDate.Date >= targetDate)
             .CountAsync();
@@ -58,10 +61,11 @@ public class VacationService : IVacationService
 
     public async Task<(int Taken, int Total)> GetWeekAvailabilityAsync(DateTime monday)
     {
+        using var context = _contextFactory.CreateDbContext();
         var weekStart = GetWeekStart(monday);
         var weekEnd = weekStart.AddDays(6);
         // A week is considered "taken" if a user has a week-booking request that overlaps that week.
-        var taken = await _context.VacationRequests
+        var taken = await context.VacationRequests
             .AsNoTracking()
             .Where(r => r.Status == Status.Approved && r.IsWeekBooking &&
                         ((r.StartDate.Date <= weekEnd && r.EndDate.Date >= weekStart)))
@@ -74,8 +78,9 @@ public class VacationService : IVacationService
 
     public async Task<(bool Success, string Message)> CreateRequestAsync(VacationRequest request)
     {
+        using var context = _contextFactory.CreateDbContext();
         // 1. Quota Validation
-        var user = await _context.Users
+        var user = await context.Users
             .AsNoTracking()
             .Include(u => u.VacationRequests)
             .FirstOrDefaultAsync(u => u.Id == request.UserId);
@@ -134,25 +139,26 @@ public class VacationService : IVacationService
             }
         }
 
-        _context.VacationRequests.Add(request);
-        await _context.SaveChangesAsync();
+        context.VacationRequests.Add(request);
+        await context.SaveChangesAsync();
         return (true, "Request created successfully.");
     }
 
     public async Task<(bool Success, string Message)> UpdateRequestAsync(int requestId, int userId, DateTime startDate, DateTime endDate)
     {
+        using var context = _contextFactory.CreateDbContext();
         if (endDate < startDate)
         {
             return (false, "End date cannot be earlier than start date.");
         }
 
-        var request = await _context.VacationRequests.FindAsync(requestId);
+        var request = await context.VacationRequests.FindAsync(requestId);
         if (request == null || request.UserId != userId)
         {
             return (false, "Request not found.");
         }
 
-        var user = await _context.Users
+        var user = await context.Users
             .AsNoTracking()
             .Include(u => u.VacationRequests)
             .FirstOrDefaultAsync(u => u.Id == userId);
@@ -194,7 +200,7 @@ public class VacationService : IVacationService
 
         if (!request.IsWeekBooking)
         {
-            var taken = await _context.VacationRequests
+            var taken = await context.VacationRequests
                 .AsNoTracking()
                 .Where(r => r.Id != requestId && r.Status == Status.Approved && !r.IsWeekBooking && r.StartDate.Date <= startDate.Date && r.EndDate.Date >= startDate.Date)
                 .CountAsync();
@@ -209,7 +215,7 @@ public class VacationService : IVacationService
             var startMonday = GetWeekStart(startDate);
             var sunday = startMonday.AddDays(6);
 
-            var taken = await _context.VacationRequests
+            var taken = await context.VacationRequests
                 .AsNoTracking()
                 .Where(r => r.Id != requestId && r.Status == Status.Approved && r.IsWeekBooking &&
                             ((r.StartDate.Date <= sunday && r.EndDate.Date >= startMonday)))
@@ -226,37 +232,40 @@ public class VacationService : IVacationService
         request.StartDate = startDate;
         request.EndDate = endDate;
         request.Status = Status.Pending;
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
         return (true, "Request updated successfully.");
     }
 
     public async Task<bool> UpdateStatusAsync(int requestId, Status status)
     {
-        var request = await _context.VacationRequests.FindAsync(requestId);
+        using var context = _contextFactory.CreateDbContext();
+        var request = await context.VacationRequests.FindAsync(requestId);
         if (request == null) return false;
 
         request.Status = status;
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
         return true;
     }
 
     public async Task<bool> DeleteRequestAsync(int requestId)
     {
-        var request = await _context.VacationRequests.FindAsync(requestId);
+        using var context = _contextFactory.CreateDbContext();
+        var request = await context.VacationRequests.FindAsync(requestId);
         if (request == null) return false;
 
-        _context.VacationRequests.Remove(request);
-        await _context.SaveChangesAsync();
+        context.VacationRequests.Remove(request);
+        await context.SaveChangesAsync();
         return true;
     }
 
     public async Task<bool> DeleteRequestForUserAsync(int requestId, int userId)
     {
-        var request = await _context.VacationRequests.FindAsync(requestId);
+        using var context = _contextFactory.CreateDbContext();
+        var request = await context.VacationRequests.FindAsync(requestId);
         if (request == null || request.UserId != userId) return false;
 
-        _context.VacationRequests.Remove(request);
-        await _context.SaveChangesAsync();
+        context.VacationRequests.Remove(request);
+        await context.SaveChangesAsync();
         return true;
     }
 

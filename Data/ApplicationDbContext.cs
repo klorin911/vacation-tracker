@@ -12,6 +12,8 @@ public class ApplicationDbContext : DbContext
 
     public DbSet<User> Users => Set<User>();
     public DbSet<VacationRequest> VacationRequests => Set<VacationRequest>();
+    public DbSet<DraftSession> DraftSessions => Set<DraftSession>();
+    public DbSet<DraftQueueItem> DraftQueueItems => Set<DraftQueueItem>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -26,6 +28,14 @@ public class ApplicationDbContext : DbContext
         {
             entity.HasOne(d => d.User)
                 .WithMany(p => p.VacationRequests)
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<DraftQueueItem>(entity =>
+        {
+            entity.HasOne(d => d.User)
+                .WithMany(p => p.DraftQueueItems)
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         });

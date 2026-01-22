@@ -1,0 +1,325 @@
+@using VacationTracker.Services
+@using VacationTracker.Data.Entities
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@inject IDraftService DraftService
+@inject IUserService UserService
+@inject AuthenticationStateProvider AuthStateProvider
+@implements IDisposable
+
+@if (_session != null && _session.IsActive)
+{
+    <div class="draft-tracker @(_isMyTurn ? "my-turn" : "") @(_session.IsPaused ? "is-paused" : "")">
+        <div class="draft-strip">
+            <div class="draft-strip__meta">
+                <span class="draft-strip__badge @(_session.IsPaused ? "is-paused" : "is-live")">
+                    @(_session.IsPaused ? "DRAFT PAUSED" : "DRAFT ACTIVE")
+                </span>
+                <span class="draft-strip__round">ROUND @_session.CurrentRound</span>
+            </div>
+
+            <div class="draft-strip__items">
+                <div class="draft-strip__item is-current">
+                    <div class="draft-strip__label">On the clock</div>
+                    <div class="draft-strip__name">@(_currentUserPicking?.Name ?? "TBD")</div>
+                    <div class="draft-strip__sub">
+                        @if (!_session.IsPaused && _timeLeft.HasValue)
+                        {
+                            <span class="draft-strip__timer @(_timeLeft.Value.TotalSeconds < 60 ? "is-urgent" : "")">
+                                @_timeLeft.Value.ToString(@"m\:ss")
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="draft-strip__muted">Timer paused</span>
+                        }
+                    </div>
+                </div>
+
+                <div class="draft-strip__item">
+                    <div class="draft-strip__label">Up next</div>
+                    <div class="draft-strip__name">@(_nextUser?.Name ?? "TBD")</div>
+                    <div class="draft-strip__sub">
+                        <span class="draft-strip__muted">On deck</span>
+                    </div>
+                </div>
+
+                <div class="draft-strip__item is-me @(_isMyTurn ? "is-active" : "")">
+                    <div class="draft-strip__label">Your spot</div>
+                    <div class="draft-strip__name">@(_loggedInUser?.Name ?? "You")</div>
+                    <div class="draft-strip__sub">
+                        @if (_totalDispatchers > 0 && _myIndex >= 0)
+                        {
+                            <span class="draft-strip__muted">Position #@(_myIndex + 1) of @_totalDispatchers</span>
+                        }
+                        @if (!_isMyTurn && _turnsUntilMe > 0)
+                        {
+                            <span class="draft-strip__muted">@_turnsUntilMe picks away</span>
+                        }
+                        else if (_isMyTurn)
+                        {
+                            <span class="draft-strip__pill">Your pick now</span>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .draft-tracker {
+        background: linear-gradient(90deg, #1f3d1f 0%, #2e6b2e 45%, #1f3d1f 100%);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+        box-shadow: var(--shadow-md);
+        color: #f8fafc;
+        position: sticky;
+        top: 0;
+        z-index: 1050;
+    }
+    .draft-tracker.my-turn {
+        background: linear-gradient(90deg, #1f4f25 0%, #3d8b3d 45%, #1f4f25 100%);
+        border-bottom-color: rgba(250, 204, 21, 0.6);
+    }
+    .draft-strip {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        padding: 0.4rem 0.85rem;
+        flex-wrap: wrap;
+    }
+    .draft-strip__meta {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-width: 140px;
+    }
+    .draft-strip__badge {
+        font-size: 0.6rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        padding: 0.15rem 0.4rem;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.35);
+        background: rgba(0, 0, 0, 0.2);
+    }
+    .draft-strip__badge.is-live {
+        background: rgba(34, 197, 94, 0.25);
+    }
+    .draft-strip__badge.is-paused {
+        background: rgba(251, 191, 36, 0.25);
+    }
+    .draft-strip__round {
+        font-weight: 700;
+        font-size: 0.85rem;
+    }
+    .draft-strip__items {
+        display: flex;
+        gap: 0.6rem;
+        flex: 1;
+        flex-wrap: wrap;
+        justify-content: flex-start;
+        min-width: 220px;
+    }
+    .draft-strip__item {
+        background: rgba(0, 0, 0, 0.24);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 8px;
+        padding: 0.35rem 0.6rem;
+        width: 220px;
+        min-width: 0;
+    }
+    .draft-strip__item.is-current {
+        border-color: rgba(250, 204, 21, 0.6);
+        box-shadow: 0 0 0 1px rgba(250, 204, 21, 0.25) inset;
+    }
+    .draft-strip__item.is-me.is-active {
+        border-color: rgba(59, 130, 246, 0.75);
+        box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.35) inset;
+    }
+    .draft-strip__label {
+        font-size: 0.6rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: rgba(248, 250, 252, 0.75);
+    }
+    .draft-strip__name {
+        font-weight: 700;
+        font-size: 0.9rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .draft-strip__sub {
+        display: flex;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+        font-size: 0.7rem;
+        color: rgba(248, 250, 252, 0.78);
+    }
+    .draft-strip__timer {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        font-weight: 700;
+        padding: 0.05rem 0.35rem;
+        border-radius: 6px;
+        background: rgba(15, 23, 42, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    .draft-strip__timer.is-urgent {
+        color: #fee2e2;
+        border-color: rgba(248, 113, 113, 0.6);
+        background: rgba(153, 27, 27, 0.4);
+    }
+    .draft-strip__pill {
+        padding: 0.05rem 0.35rem;
+        border-radius: 999px;
+        background: rgba(59, 130, 246, 0.35);
+        border: 1px solid rgba(59, 130, 246, 0.55);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-size: 0.55rem;
+        font-weight: 700;
+    }
+    .draft-strip__muted {
+        color: rgba(248, 250, 252, 0.75);
+    }
+    .pulse {
+        animation: pulse-animation 2s infinite;
+    }
+    @@keyframes pulse-animation {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
+    }
+
+    @@media (max-width: 900px) {
+        .draft-strip {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .draft-strip__items {
+            justify-content: center;
+        }
+    }
+
+    @@media (max-width: 600px) {
+        .draft-strip__items {
+            justify-content: center;
+        }
+        .draft-strip__item {
+            width: 100%;
+        }
+    }
+</style>
+
+@code {
+    private DraftSession? _session;
+    private User? _currentUserPicking;
+    private User? _nextUser;
+    private bool _isMyTurn;
+    private int _turnsUntilMe = -1;
+    private int _myIndex = -1;
+    private int _totalDispatchers;
+    private TimeSpan? _timeLeft;
+    private System.Threading.Timer? _timer;
+    private User? _loggedInUser;
+    private int _lastRemainingSeconds = -1;
+
+    protected override async Task OnInitializedAsync()
+    {
+        DraftService.OnDraftUpdated += HandleDraftUpdated;
+        
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var email = authState.User.FindFirst(ClaimTypes.Email)?.Value;
+        if (email != null)
+        {
+            _loggedInUser = await UserService.GetUserByEmailAsync(email);
+        }
+
+        await LoadDraftData();
+        _timer = new System.Threading.Timer(_ => InvokeAsync(UpdateTimer), null, 0, 1000);
+    }
+
+    private void HandleDraftUpdated()
+    {
+        _ = InvokeAsync(async () =>
+        {
+            await LoadDraftData();
+            StateHasChanged();
+        });
+    }
+
+    private async Task LoadDraftData()
+    {
+        _session = await DraftService.GetActiveSessionAsync();
+        _currentUserPicking = null;
+        _nextUser = null;
+        _isMyTurn = false;
+        _turnsUntilMe = -1;
+        _myIndex = -1;
+        _totalDispatchers = 0;
+        _lastRemainingSeconds = -1;
+
+        if (_session != null && _session.IsActive)
+        {
+            var dispatchers = await DraftService.GetDispatcherOrderAsync();
+            _totalDispatchers = dispatchers.Count;
+            _currentUserPicking = dispatchers.FirstOrDefault(u => u.Id == _session.CurrentUserId);
+            
+            if (_currentUserPicking != null)
+            {
+                var currentIndex = dispatchers.FindIndex(u => u.Id == _currentUserPicking.Id);
+                _nextUser = dispatchers[(currentIndex + 1) % dispatchers.Count];
+
+                if (_loggedInUser != null)
+                {
+                    _isMyTurn = _loggedInUser.Id == _currentUserPicking.Id;
+                    
+                    _myIndex = dispatchers.FindIndex(u => u.Id == _loggedInUser.Id);
+                    if (_myIndex != -1)
+                    {
+                        if (_myIndex > currentIndex)
+                        {
+                            _turnsUntilMe = _myIndex - currentIndex;
+                        }
+                        else if (_myIndex < currentIndex)
+                        {
+                            _turnsUntilMe = (dispatchers.Count - currentIndex) + _myIndex;
+                        }
+                        else
+                        {
+                            _turnsUntilMe = 0;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private void UpdateTimer()
+    {
+        if (_session == null || !_session.IsActive || _session.IsPaused || !_session.TurnStartTime.HasValue)
+        {
+            return;
+        }
+
+        var elapsed = DateTime.UtcNow - _session.TurnStartTime.Value;
+        var remaining = TimeSpan.FromMinutes(5) - elapsed;
+        var remainingSeconds = (int)Math.Max(0, remaining.TotalSeconds);
+        if (remainingSeconds == _lastRemainingSeconds)
+        {
+            return;
+        }
+
+        _lastRemainingSeconds = remainingSeconds;
+        _timeLeft = TimeSpan.FromSeconds(remainingSeconds);
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        DraftService.OnDraftUpdated -= HandleDraftUpdated;
+        _timer?.Dispose();
+    }
+}

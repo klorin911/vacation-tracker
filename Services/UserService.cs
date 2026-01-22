@@ -16,23 +16,25 @@ public interface IUserService
 
 public class UserService : IUserService
 {
-    private readonly ApplicationDbContext _context;
+    private readonly IDbContextFactory<ApplicationDbContext> _contextFactory;
 
-    public UserService(ApplicationDbContext context)
+    public UserService(IDbContextFactory<ApplicationDbContext> contextFactory)
     {
-        _context = context;
+        _contextFactory = contextFactory;
     }
 
     public async Task<User?> GetUserByEmailAsync(string email)
     {
-        return await _context.Users
+        using var context = _contextFactory.CreateDbContext();
+        return await context.Users
             .AsNoTracking()
             .FirstOrDefaultAsync(u => u.Email == email);
     }
 
     public async Task<List<User>> GetUsersAsync()
     {
-        return await _context.Users
+        using var context = _contextFactory.CreateDbContext();
+        return await context.Users
             .AsNoTracking()
             .OrderBy(u => u.Name)
             .ToListAsync();
@@ -40,7 +42,8 @@ public class UserService : IUserService
 
     public async Task<List<User>> GetAdminUsersAsync()
     {
-        return await _context.Users
+        using var context = _contextFactory.CreateDbContext();
+        return await context.Users
             .AsNoTracking()
             .Where(u => u.Role == Role.Admin)
             .OrderBy(u => u.Name)
@@ -49,8 +52,9 @@ public class UserService : IUserService
 
     public async Task<(bool Success, string? ErrorMessage)> CreateUserAsync(User user)
     {
+        using var context = _contextFactory.CreateDbContext();
         var normalizedEmail = user.Email.Trim().ToLowerInvariant();
-        var emailExists = await _context.Users
+        var emailExists = await context.Users
             .AnyAsync(u => u.Email.ToLower() == normalizedEmail);
 
         if (emailExists)
@@ -61,15 +65,16 @@ public class UserService : IUserService
         user.Email = user.Email.Trim();
         user.Name = user.Name.Trim();
 
-        _context.Users.Add(user);
-        await _context.SaveChangesAsync();
+        context.Users.Add(user);
+        await context.SaveChangesAsync();
         return (true, null);
     }
 
     public async Task<(bool Success, string? ErrorMessage)> UpdateUserAsync(User user)
     {
+        using var context = _contextFactory.CreateDbContext();
         var normalizedEmail = user.Email.Trim().ToLowerInvariant();
-        var emailExists = await _context.Users
+        var emailExists = await context.Users
             .AnyAsync(u => u.Email.ToLower() == normalizedEmail && u.Id != user.Id);
 
         if (emailExists)
@@ -77,7 +82,7 @@ public class UserService : IUserService
             return (false, "A different user already uses that email.");
         }
 
-        var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Id == user.Id);
+        var existingUser = await context.Users.FirstOrDefaultAsync(u => u.Id == user.Id);
         if (existingUser == null)
         {
             return (false, "User not found.");
@@ -86,23 +91,25 @@ public class UserService : IUserService
         existingUser.Email = user.Email.Trim();
         existingUser.Name = user.Name.Trim();
         existingUser.Role = user.Role;
+        existingUser.BadgeNumber = user.BadgeNumber;
         existingUser.WeekQuota = user.WeekQuota;
         existingUser.DayQuota = user.DayQuota;
 
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
         return (true, null);
     }
 
     public async Task<(bool Success, string? ErrorMessage)> DeleteUserAsync(int userId)
     {
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        using var context = _contextFactory.CreateDbContext();
+        var user = await context.Users.FirstOrDefaultAsync(u => u.Id == userId);
         if (user == null)
         {
             return (false, "User not found.");
         }
 
-        _context.Users.Remove(user);
-        await _context.SaveChangesAsync();
+        context.Users.Remove(user);
+        await context.SaveChangesAsync();
         return (true, null);
     }
 }

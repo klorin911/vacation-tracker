@@ -57,10 +57,17 @@
 
     private DateTime _currentMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
     private List<DayInfo> _days = new();
+    private List<VacationRequest> _activeRequests = new();
+    private Dictionary<DateTime, VacationRequest> _requestsByDate = new();
 
     protected override async Task OnInitializedAsync()
     {
         await LoadDays();
+    }
+
+    protected override void OnParametersSet()
+    {
+        BuildRequestLookups();
     }
 
     private async Task LoadDays()
@@ -128,11 +135,7 @@
 
     private VacationRequest? GetUserRequestForDate(DateTime date)
     {
-        return UserRequests.FirstOrDefault(r =>
-            r.Type == RequestType.Vacation &&
-            r.Status != Status.Rejected &&
-            r.StartDate.Date <= date.Date &&
-            r.EndDate.Date >= date.Date);
+        return _requestsByDate.TryGetValue(date.Date, out var request) ? request : null;
     }
 
     private bool IsEditingRequest(VacationRequest request)
@@ -143,6 +146,25 @@
     private string GetUserStatusClass(Status status)
     {
         return status == Status.Pending ? "pending" : "approved";
+    }
+
+    private void BuildRequestLookups()
+    {
+        _activeRequests = UserRequests
+            .Where(r => r.Type == RequestType.Vacation && r.Status != Status.Rejected)
+            .ToList();
+
+        _requestsByDate = new Dictionary<DateTime, VacationRequest>();
+        foreach (var request in _activeRequests)
+        {
+            var current = request.StartDate.Date;
+            var end = request.EndDate.Date;
+            while (current <= end)
+            {
+                _requestsByDate.TryAdd(current, request);
+                current = current.AddDays(1);
+            }
+        }
     }
 
     private class DayInfo

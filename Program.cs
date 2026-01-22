@@ -20,43 +20,25 @@ builder.Services.AddAuthentication(options =>
     CookieEmailAuthHandler.SchemeName,
     options => { });
 builder.Services.AddAuthorization();
-builder.Services.AddAuthorizationCore();
 builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthStateProvider>();
 builder.Services.AddScoped<Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage.ProtectedSessionStorage>();
 
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
+builder.Services.AddDbContextFactory<ApplicationDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IVacationService, VacationService>();
+builder.Services.AddSingleton<IDraftService, DraftService>();
+builder.Services.AddHostedService<DraftBackgroundService>();
 
 var app = builder.Build();
 
 // Seed data
 using (var scope = app.Services.CreateScope())
 {
-    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    context.Database.EnsureCreated();
-    if (!context.Users.Any())
-    {
-        context.Users.Add(new VacationTracker.Data.Entities.User
-        {
-            Email = "admin@example.com",
-            Name = "Admin User",
-            Role = VacationTracker.Data.Entities.Role.Admin,
-            WeekQuota = 5,
-            DayQuota = 5
-        });
-        context.Users.Add(new VacationTracker.Data.Entities.User
-        {
-            Email = "employee@example.com",
-            Name = "Employee User",
-            Role = VacationTracker.Data.Entities.Role.Employee,
-            WeekQuota = 5,
-            DayQuota = 5
-        });
-        context.SaveChanges();
-    }
+    var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+    using var context = contextFactory.CreateDbContext();
+    DbInitializer.Initialize(context);
 }
 
 // Configure the HTTP request pipeline.

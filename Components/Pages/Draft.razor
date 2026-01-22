@@ -1,0 +1,109 @@
+@page "/draft"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@using VacationTracker.Data.Entities
+@using VacationTracker.Services
+@using VacationTracker.Components.Shared
+@attribute [Authorize]
+@inject IDraftService DraftService
+@inject IUserService UserService
+@inject AuthenticationStateProvider AuthStateProvider
+@implements IDisposable
+
+<div class="app-section">
+    <div class="app-toolbar">
+        <div>
+            <h2 class="page-title mb-1">Vacation Draft</h2>
+            <p class="subtle-text mb-0">Dispatcher seniority-based vacation selection.</p>
+        </div>
+    </div>
+
+    @if (_session == null || !_session.IsActive)
+    {
+        <div class="surface-card p-5 text-center">
+            <div class="mb-4">
+                <i class="bi bi-calendar-event text-primary" style="font-size: 4rem;"></i>
+            </div>
+            <h3>No Active Draft</h3>
+            <p class="text-muted">The vacation draft is not currently active. Please check back later or contact an administrator.</p>
+        </div>
+    }
+    else if (_user == null)
+    {
+        <div class="surface-card p-5 text-center">
+            <h3>Loading User Data...</h3>
+        </div>
+    }
+    else if (_user.Role != Role.Dispatcher)
+    {
+        <div class="surface-card p-5 text-center">
+            <h3>Access Restricted</h3>
+            <p class="text-muted">The draft is only available to dispatchers. You are logged in as a @_user.Role.</p>
+        </div>
+    }
+    else
+    {
+        <div class="row g-4">
+            <div class="col-lg-9">
+                <DraftBoard UserId="_user.Id" Session="_session" IsMyTurn="_isMyTurn" OnUpdate="HandleUpdate" />
+            </div>
+            <div class="col-lg-3">
+                <div class="surface-card p-3 sticky-top" style="top: 100px;">
+                    <DraftQueue @ref="_queueComponent" UserId="_user.Id" />
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private DraftSession? _session;
+    private User? _user;
+    private bool _isMyTurn;
+    private DraftQueue? _queueComponent;
+
+    protected override async Task OnInitializedAsync()
+    {
+        DraftService.OnDraftUpdated += HandleDraftUpdated;
+        
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var email = authState.User.FindFirst(ClaimTypes.Email)?.Value;
+        if (email != null)
+        {
+            _user = await UserService.GetUserByEmailAsync(email);
+        }
+
+        await LoadData();
+    }
+
+    private void HandleDraftUpdated()
+    {
+        _ = InvokeAsync(async () =>
+        {
+            await LoadData();
+            if (_queueComponent != null) await _queueComponent.Refresh();
+            StateHasChanged();
+        });
+    }
+
+    private async Task LoadData()
+    {
+        _session = await DraftService.GetActiveSessionAsync();
+        if (_session != null && _user != null)
+        {
+            _isMyTurn = _session.CurrentUserId == _user.Id;
+        }
+    }
+
+    private async Task HandleUpdate()
+    {
+        await LoadData();
+        if (_queueComponent != null) await _queueComponent.Refresh();
+    }
+
+    public void Dispose()
+    {
+        DraftService.OnDraftUpdated -= HandleDraftUpdated;
+    }
+}

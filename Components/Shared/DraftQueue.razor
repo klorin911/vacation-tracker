@@ -1,0 +1,85 @@
+@using VacationTracker.Services
+@using VacationTracker.Data.Entities
+@inject IDraftService DraftService
+
+<div class="draft-queue-sidebar">
+    <div class="sidebar-header">
+        <h5 class="mb-0">Your Auto-Pick Queue</h5>
+        <p class="small text-muted mb-0">Weeks will be picked in this order if you miss your turn.</p>
+    </div>
+    
+    <div class="queue-list mt-3">
+        @if (!_queue.Any())
+        {
+            <div class="text-center py-4 border rounded dashed">
+                <span class="text-muted">No weeks in queue.</span>
+            </div>
+        }
+        else
+        {
+            @foreach (var item in _queue)
+            {
+                <div class="queue-item d-flex align-items-center justify-content-between p-2 mb-2 border rounded">
+                    <div>
+                        <div class="small fw-bold">@item.WeekStartDate.ToString("MMM d") - @item.WeekStartDate.AddDays(6).ToString("MMM d")</div>
+                        <div class="subtle-text" style="font-size: 0.7rem;">Priority #@item.QueueOrder</div>
+                    </div>
+                    <div class="queue-actions">
+                        <button class="btn btn-xs btn-icon" @onclick="() => MoveUp(item)"><i class="bi bi-chevron-up"></i></button>
+                        <button class="btn btn-xs btn-icon" @onclick="() => MoveDown(item)"><i class="bi bi-chevron-down"></i></button>
+                        <button class="btn btn-xs btn-icon text-danger" @onclick="() => Remove(item)"><i class="bi bi-x"></i></button>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+<style>
+    .btn-xs {
+        padding: 0.1rem 0.3rem;
+        font-size: 0.75rem;
+    }
+    .dashed {
+        border-style: dashed !important;
+    }
+</style>
+
+@code {
+    [Parameter] public int UserId { get; set; }
+    private List<DraftQueueItem> _queue = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadQueue();
+    }
+
+    private async Task LoadQueue()
+    {
+        _queue = await DraftService.GetUserQueueAsync(UserId);
+    }
+
+    private async Task MoveUp(DraftQueueItem item)
+    {
+        if (await DraftService.MoveQueueItemAsync(UserId, item.Id, true))
+            await LoadQueue();
+    }
+
+    private async Task MoveDown(DraftQueueItem item)
+    {
+        if (await DraftService.MoveQueueItemAsync(UserId, item.Id, false))
+            await LoadQueue();
+    }
+
+    private async Task Remove(DraftQueueItem item)
+    {
+        if (await DraftService.RemoveFromQueueAsync(UserId, item.Id))
+            await LoadQueue();
+    }
+    
+    public async Task Refresh()
+    {
+        await LoadQueue();
+        StateHasChanged();
+    }
+}

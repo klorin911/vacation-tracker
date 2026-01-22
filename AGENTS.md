@@ -33,3 +33,7 @@
 ## Configuration & Data
 - Configure connection strings in `VacationTracker/appsettings.json`; use `VacationTracker/appsettings.Development.json` for local overrides.
 - Avoid committing secrets; prefer user secrets or environment variables.
+
+## Subagents
+- Use subagents when parallel research or exploration would speed up delivery (e.g., scanning multiple files/areas or comparing approaches).
+- Keep subagent scopes small and focused; consolidate findings before making edits.

@@ -64,10 +64,18 @@
     
     private DateTime _currentMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
     private List<WeekInfo> _weeks = new();
+    private List<VacationRequest> _activeRequests = new();
+    private List<VacationRequest> _activeWeekRequests = new();
+    private Dictionary<DateTime, VacationRequest> _dayRequestsByDate = new();
 
     protected override async Task OnInitializedAsync()
     {
         await LoadWeeks();
+    }
+
+    protected override void OnParametersSet()
+    {
+        BuildRequestLookups();
     }
 
     private async Task LoadWeeks()
@@ -131,30 +139,20 @@
 
     private VacationRequest? GetUserWeekRequest(DateTime weekStart, DateTime weekEnd)
     {
-        return UserRequests.FirstOrDefault(r =>
-            r.Type == RequestType.Vacation &&
-            r.IsWeekBooking &&
-            r.Status != Status.Rejected &&
+        return _activeWeekRequests.FirstOrDefault(r =>
             r.StartDate.Date <= weekEnd.Date &&
             r.EndDate.Date >= weekStart.Date);
     }
 
     private VacationRequest? GetUserDayRequestForDate(DateTime date)
     {
-        return UserRequests.FirstOrDefault(r =>
-            r.Type == RequestType.Vacation &&
-            !r.IsWeekBooking &&
-            r.Status != Status.Rejected &&
-            r.StartDate.Date <= date.Date &&
-            r.EndDate.Date >= date.Date);
+        return _dayRequestsByDate.TryGetValue(date.Date, out var request) ? request : null;
     }
 
     private bool HasUserOverlap(DateTime start, DateTime end)
     {
-        return UserRequests.Any(r =>
+        return _activeRequests.Any(r =>
             (!EditingRequestId.HasValue || r.Id != EditingRequestId.Value) &&
-            r.Type == RequestType.Vacation &&
-            r.Status != Status.Rejected &&
             r.StartDate.Date <= end.Date &&
             r.EndDate.Date >= start.Date);
     }
@@ -162,6 +160,29 @@
     private string GetUserStatusClass(Status status)
     {
         return status == Status.Pending ? "pending" : "approved";
+    }
+
+    private void BuildRequestLookups()
+    {
+        _activeRequests = UserRequests
+            .Where(r => r.Type == RequestType.Vacation && r.Status != Status.Rejected)
+            .ToList();
+
+        _activeWeekRequests = _activeRequests
+            .Where(r => r.IsWeekBooking)
+            .ToList();
+
+        _dayRequestsByDate = new Dictionary<DateTime, VacationRequest>();
+        foreach (var request in _activeRequests.Where(r => !r.IsWeekBooking))
+        {
+            var current = request.StartDate.Date;
+            var end = request.EndDate.Date;
+            while (current <= end)
+            {
+                _dayRequestsByDate.TryAdd(current, request);
+                current = current.AddDays(1);
+            }
+        }
     }
 
     private class WeekInfo

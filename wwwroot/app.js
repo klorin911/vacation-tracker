@@ -59,3 +59,6 @@ window.vacationTracker.initNavDropdowns = () => {
         }
     }, { passive: true });
 };
+
+window.vacationTracker.getSystemTheme = () =>
+    window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
