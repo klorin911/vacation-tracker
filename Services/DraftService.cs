@@ -15,6 +15,7 @@ public interface IDraftService
     Task<bool> ResumeDraftAsync();
     Task<bool> ResetDraftAsync();
     Task<(bool Success, string Message)> MakePickAsync(int userId, DateTime weekStart);
+    Task<(bool Success, string Message)> EndTurnAsync(int userId);
     Task<List<DraftQueueItem>> GetUserQueueAsync(int userId);
     Task<bool> AddToQueueAsync(int userId, DateTime weekStart);
     Task<bool> RemoveFromQueueAsync(int userId, int queueItemId);
@@ -153,6 +154,41 @@ public class DraftService : IDraftService
 
     public async Task<(bool Success, string Message)> MakePickAsync(int userId, DateTime weekStart)
     {
+        return await MakePickInternalAsync(userId, weekStart, allowConsecutivePicks: true);
+    }
+
+    public async Task<(bool Success, string Message)> EndTurnAsync(int userId)
+    {
+        using var context = _contextFactory.CreateDbContext();
+
+        var session = await context.DraftSessions.FirstOrDefaultAsync(s => s.IsActive);
+        if (session == null || session.IsPaused) return (false, "Draft is not active or is paused.");
+        if (session.CurrentUserId != userId) return (false, "It is not your turn.");
+
+        if (!session.TurnStartTime.HasValue)
+        {
+            return (false, "Turn start time is missing.");
+        }
+
+        var picksThisTurn = await GetDraftPickQuery(context, session)
+            .Where(r => r.UserId == userId && r.CreatedAt >= session.TurnStartTime.Value)
+            .CountAsync();
+
+        if (picksThisTurn == 0)
+        {
+            return (false, "Make a pick before ending your turn.");
+        }
+
+        await AdvanceTurnAsync(context, session);
+        OnDraftUpdated?.Invoke();
+        return (true, "Turn ended.");
+    }
+
+    private async Task<(bool Success, string Message)> MakePickInternalAsync(
+        int userId,
+        DateTime weekStart,
+        bool allowConsecutivePicks)
+    {
         using var scope = _scopeFactory.CreateScope();
         using var context = _contextFactory.CreateDbContext();
         var vacationService = scope.ServiceProvider.GetRequiredService<IVacationService>();
@@ -160,6 +196,25 @@ public class DraftService : IDraftService
         var session = await context.DraftSessions.FirstOrDefaultAsync(s => s.IsActive);
         if (session == null || session.IsPaused) return (false, "Draft is not active or is paused.");
         if (session.CurrentUserId != userId) return (false, "It is not your turn.");
+
+        var user = await context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null) return (false, "User not found.");
+
+        var maxPicks = Math.Min(session.TotalRounds, user.WeekQuota);
+        var draftPicks = await GetDraftPicksForUserAsync(context, session, userId);
+        if (draftPicks.Count >= maxPicks) return (false, "You have already used all your draft picks.");
+
+        if (allowConsecutivePicks && session.TurnStartTime.HasValue)
+        {
+            var turnPicks = draftPicks
+                .Where(r => r.CreatedAt >= session.TurnStartTime.Value)
+                .ToList();
+
+            if (turnPicks.Any() && !turnPicks.Any(p => IsConsecutiveWeek(p.StartDate, weekStart)))
+            {
+                return (false, "Non-consecutive picks must be taken one at a time.");
+            }
+        }
 
         var weekEnd = weekStart.AddDays(6);
         var request = new VacationRequest
@@ -176,7 +231,27 @@ public class DraftService : IDraftService
         var result = await vacationService.CreateRequestAsync(request);
         if (!result.Success) return result;
 
-        await AdvanceTurnAsync(context, session);
+        if (!allowConsecutivePicks)
+        {
+            await AdvanceTurnAsync(context, session);
+            OnDraftUpdated?.Invoke();
+            return (true, "Pick successful.");
+        }
+
+        var updatedPicks = draftPicks.Select(r => r.StartDate.Date).ToHashSet();
+        updatedPicks.Add(weekStart.Date);
+        var remainingPicks = maxPicks - updatedPicks.Count;
+        var hasAdjacentOption = await HasAdjacentAvailableWeekAsync(
+            context,
+            vacationService,
+            userId,
+            updatedPicks);
+
+        if (remainingPicks <= 0 || !hasAdjacentOption)
+        {
+            await AdvanceTurnAsync(context, session);
+        }
+
         OnDraftUpdated?.Invoke();
         return (true, "Pick successful.");
     }
@@ -186,31 +261,63 @@ public class DraftService : IDraftService
         var dispatchers = await context.Users
             .Where(u => u.Role == Role.Dispatcher)
             .OrderBy(u => u.BadgeNumber)
-            .Select(u => u.Id)
+            .Select(u => new { u.Id, u.WeekQuota })
             .ToListAsync();
 
-        var currentIndex = dispatchers.IndexOf(session.CurrentUserId ?? 0);
-        
-        if (currentIndex == dispatchers.Count - 1)
+        if (!dispatchers.Any())
+        {
+            session.IsActive = false;
+            session.EndTime = DateTime.UtcNow;
+            await context.SaveChangesAsync();
+            return;
+        }
+
+        var pickCounts = await GetDraftPickCountsAsync(context, session, dispatchers.Select(d => d.Id).ToList());
+        var currentIndex = dispatchers.FindIndex(d => d.Id == session.CurrentUserId);
+        if (currentIndex < 0) currentIndex = 0;
+
+        bool wrapped = false;
+        int nextIndex = currentIndex;
+        int attempts = 0;
+        while (attempts < dispatchers.Count)
+        {
+            nextIndex = (nextIndex + 1) % dispatchers.Count;
+            if (nextIndex == 0) wrapped = true;
+
+            var dispatcher = dispatchers[nextIndex];
+            var maxPicks = Math.Min(session.TotalRounds, dispatcher.WeekQuota);
+            pickCounts.TryGetValue(dispatcher.Id, out var count);
+            if (count < maxPicks)
+            {
+                break;
+            }
+
+            attempts++;
+        }
+
+        if (attempts >= dispatchers.Count)
+        {
+            session.IsActive = false;
+            session.EndTime = DateTime.UtcNow;
+            await context.SaveChangesAsync();
+            return;
+        }
+
+        if (wrapped)
         {
             if (session.CurrentRound >= session.TotalRounds)
             {
                 session.IsActive = false;
                 session.EndTime = DateTime.UtcNow;
+                await context.SaveChangesAsync();
+                return;
             }
-            else
-            {
-                session.CurrentRound++;
-                session.CurrentUserId = dispatchers.First();
-                session.TurnStartTime = DateTime.UtcNow;
-            }
-        }
-        else
-        {
-            session.CurrentUserId = dispatchers[currentIndex + 1];
-            session.TurnStartTime = DateTime.UtcNow;
+
+            session.CurrentRound++;
         }
 
+        session.CurrentUserId = dispatchers[nextIndex].Id;
+        session.TurnStartTime = DateTime.UtcNow;
         await context.SaveChangesAsync();
     }
 
@@ -232,7 +339,7 @@ public class DraftService : IDraftService
             bool pickMade = false;
             foreach (var item in queue)
             {
-                var result = await MakePickAsync(userId, item.WeekStartDate);
+                var result = await MakePickInternalAsync(userId, item.WeekStartDate, allowConsecutivePicks: false);
                 if (result.Success)
                 {
                     context.DraftQueueItems.Remove(item);
@@ -340,5 +447,77 @@ public class DraftService : IDraftService
 
         await context.SaveChangesAsync();
         return true;
+    }
+
+    private static IQueryable<VacationRequest> GetDraftPickQuery(ApplicationDbContext context, DraftSession session)
+    {
+        var startTime = session.StartTime ?? DateTime.MinValue;
+        return context.VacationRequests.Where(r =>
+            r.IsWeekBooking &&
+            r.Type == RequestType.Vacation &&
+            r.Status == Status.Approved &&
+            r.Comment != null &&
+            r.Comment.StartsWith("Draft Round") &&
+            r.CreatedAt >= startTime);
+    }
+
+    private static async Task<List<VacationRequest>> GetDraftPicksForUserAsync(
+        ApplicationDbContext context,
+        DraftSession session,
+        int userId)
+    {
+        return await GetDraftPickQuery(context, session)
+            .Where(r => r.UserId == userId)
+            .ToListAsync();
+    }
+
+    private static async Task<Dictionary<int, int>> GetDraftPickCountsAsync(
+        ApplicationDbContext context,
+        DraftSession session,
+        List<int> userIds)
+    {
+        return await GetDraftPickQuery(context, session)
+            .Where(r => userIds.Contains(r.UserId))
+            .GroupBy(r => r.UserId)
+            .Select(g => new { g.Key, Count = g.Count() })
+            .ToDictionaryAsync(g => g.Key, g => g.Count);
+    }
+
+    private static bool IsConsecutiveWeek(DateTime first, DateTime second)
+    {
+        return Math.Abs((first.Date - second.Date).TotalDays) == 7;
+    }
+
+    private static async Task<bool> HasAdjacentAvailableWeekAsync(
+        ApplicationDbContext context,
+        IVacationService vacationService,
+        int userId,
+        HashSet<DateTime> pickedWeekStarts)
+    {
+        var candidates = pickedWeekStarts
+            .SelectMany(date => new[] { date.AddDays(-7), date.AddDays(7) })
+            .Select(date => date.Date)
+            .Distinct()
+            .Where(date => !pickedWeekStarts.Contains(date))
+            .ToList();
+
+        foreach (var candidate in candidates)
+        {
+            var weekEnd = candidate.AddDays(6);
+            var hasOverlap = await context.VacationRequests
+                .AnyAsync(r =>
+                    r.UserId == userId &&
+                    r.Type == RequestType.Vacation &&
+                    r.Status != Status.Rejected &&
+                    r.StartDate.Date <= weekEnd &&
+                    r.EndDate.Date >= candidate);
+
+            if (hasOverlap) continue;
+
+            var (taken, total) = await vacationService.GetWeekAvailabilityAsync(candidate);
+            if (taken < total) return true;
+        }
+
+        return false;
     }
 }

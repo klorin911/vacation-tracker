@@ -4,6 +4,25 @@
 @inject IVacationService VacationService
 
 <div class="draft-board">
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <div class="alert alert-danger mb-2 p-2 small">
+            @_errorMessage
+            <button type="button" class="btn-close float-end" @onclick="() => _errorMessage = null" style="font-size: 0.7rem;"></button>
+        </div>
+    }
+
+    @if (CanEndTurn())
+    {
+        <div class="draft-turn-control">
+            <div class="control-info">
+                <span class="fw-bold">Your Turn</span>
+                <span class="small text-muted ms-2">You have made a selection. End turn if done?</span>
+            </div>
+            <button class="btn btn-sm btn-warning fw-bold" @onclick="EndTurnAsync">End Turn</button>
+        </div>
+    }
+
     <div class="draft-week-header">
         <div class="draft-week-meta">Week</div>
         <div class="draft-week-days">
@@ -152,6 +171,16 @@
         display: flex;
         justify-content: flex-end;
     }
+    .draft-turn-control {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        margin-bottom: 0.75rem;
+    }
     @@media (max-width: 992px) {
         .draft-week-header,
         .draft-week-row {
@@ -172,6 +201,7 @@
     private List<WeekInfo> _weeks = new();
     private List<VacationRequest> _myPicks = new();
     private HashSet<DateTime> _myPickWeekStarts = new();
+    private string? _errorMessage;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -221,6 +251,14 @@
         return IsMyTurn && week.Taken < week.Total && !IsMyPick(week) && Session is { IsActive: true, IsPaused: false };
     }
 
+    private bool CanEndTurn()
+    {
+        if (!IsMyTurn || Session is not { IsActive: true, IsPaused: false } || Session.TurnStartTime == null)
+            return false;
+            
+        return _myPicks.Any(r => r.CreatedAt >= Session.TurnStartTime);
+    }
+
     private bool CanQueue(WeekInfo week)
     {
         return !IsMyTurn && week.Taken < week.Total && !IsMyPick(week);
@@ -240,10 +278,29 @@
 
     private async Task MakePick(WeekInfo week)
     {
+        _errorMessage = null;
         var result = await DraftService.MakePickAsync(UserId, week.Start);
         if (result.Success)
         {
             await OnUpdate.InvokeAsync();
+        }
+        else
+        {
+            _errorMessage = result.Message;
+        }
+    }
+
+    private async Task EndTurnAsync()
+    {
+        _errorMessage = null;
+        var result = await DraftService.EndTurnAsync(UserId);
+        if (result.Success)
+        {
+            await OnUpdate.InvokeAsync();
+        }
+        else
+        {
+            _errorMessage = result.Message;
         }
     }
 
