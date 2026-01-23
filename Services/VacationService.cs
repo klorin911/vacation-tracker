@@ -135,7 +135,7 @@ public class VacationService : IVacationService
             var (taken, total) = await GetWeekAvailabilityAsync(startMonday);
             if (taken >= total)
             {
-                return (false, $"Weekly capacity reached for the week of {startMonday.ToShortDateString()}. Max {total} employees allowed.");
+                return (false, $"Weekly capacity reached for the week of {startMonday.ToShortDateString()}. Max {total} dispatchers allowed.");
             }
         }
 
@@ -225,7 +225,7 @@ public class VacationService : IVacationService
 
             if (taken >= MaxWeeklyVacations)
             {
-                return (false, $"Weekly capacity reached for the week of {startMonday.ToShortDateString()}. Max {MaxWeeklyVacations} employees allowed.");
+                return (false, $"Weekly capacity reached for the week of {startMonday.ToShortDateString()}. Max {MaxWeeklyVacations} dispatchers allowed.");
             }
         }
 

@@ -8,7 +8,7 @@ public interface IUserService
 {
     Task<User?> GetUserByEmailAsync(string email);
     Task<List<User>> GetUsersAsync();
-    Task<List<User>> GetAdminUsersAsync();
+    Task<List<User>> GetSupervisorUsersAsync();
     Task<(bool Success, string? ErrorMessage)> CreateUserAsync(User user);
     Task<(bool Success, string? ErrorMessage)> UpdateUserAsync(User user);
     Task<(bool Success, string? ErrorMessage)> DeleteUserAsync(int userId);
@@ -40,12 +40,12 @@ public class UserService : IUserService
             .ToListAsync();
     }
 
-    public async Task<List<User>> GetAdminUsersAsync()
+    public async Task<List<User>> GetSupervisorUsersAsync()
     {
         using var context = _contextFactory.CreateDbContext();
         return await context.Users
             .AsNoTracking()
-            .Where(u => u.Role == Role.Admin)
+            .Where(u => u.Role == Role.Supervisor)
             .OrderBy(u => u.Name)
             .ToListAsync();
     }

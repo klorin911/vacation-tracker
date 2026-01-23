@@ -27,9 +27,9 @@
                 <Authorized Context="navContext">
                     <NavLink class="app-nav__link" href="dashboard">Dashboard</NavLink>
                     <NavLink class="app-nav__link" href="draft">Draft</NavLink>
-                    <AuthorizeView Roles="@nameof(Role.Admin)">
-                        <NavLink class="app-nav__link" href="admin">Admin</NavLink>
-                        <NavLink class="app-nav__link" href="admin/draft">Admin Draft</NavLink>
+                    <AuthorizeView Roles="@nameof(Role.Supervisor)">
+                        <NavLink class="app-nav__link" href="supervisor">Supervisor</NavLink>
+                        <NavLink class="app-nav__link" href="supervisor/draft">Supervisor Draft</NavLink>
                     </AuthorizeView>
                     <div class="app-nav__mobile-only">
                         <div class="app-nav__divider"></div>
@@ -69,16 +69,16 @@
                             {
                                 <div class="app-nav__menu-section">
                                     <div class="app-nav__menu-label">Quick switch (dev)</div>
-                                    @if (_switchAdmins.Any())
+                                    @if (_switchSupervisors.Any())
                                     {
-                                        <div class="app-nav__menu-group">Admins</div>
-                                        @foreach (var admin in _switchAdmins)
+                                        <div class="app-nav__menu-group">Supervisors</div>
+                                        @foreach (var supervisor in _switchSupervisors)
                                         {
                                             <button type="button"
                                                     class="app-nav__menu-item app-nav__menu-item--button"
                                                     disabled="@_isSwitching"
-                                                    @onclick="() => SwitchUser(admin.Email)">
-                                                @admin.Name
+                                                    @onclick="() => SwitchUser(supervisor.Email)">
+                                                @supervisor.Name
                                             </button>
                                         }
                                     }
@@ -211,9 +211,9 @@
         try
         {
             var users = await UserService.GetUsersAsync();
-            _switchAdmins = users.Where(u => u.Role == Role.Admin).ToList();
+            _switchSupervisors = users.Where(u => u.Role == Role.Supervisor).ToList();
             _switchDispatchers = users.Where(u => u.Role == Role.Dispatcher).ToList();
-            _showQuickSwitch = _switchAdmins.Count > 0 || _switchDispatchers.Count > 0;
+            _showQuickSwitch = _switchSupervisors.Count > 0 || _switchDispatchers.Count > 0;
             _quickSwitchLoaded = true;
         }
         finally
@@ -222,7 +222,7 @@
         }
     }
 
-    private List<User> _switchAdmins = new();
+    private List<User> _switchSupervisors = new();
     private List<User> _switchDispatchers = new();
     private string _switchError = "";
     private bool _isSwitching;

@@ -1,8 +1,8 @@
-@page "/admin/draft"
+@page "/supervisor/draft"
 @using Microsoft.AspNetCore.Authorization
 @using VacationTracker.Data.Entities
 @using VacationTracker.Services
-@attribute [Authorize(Roles = nameof(Role.Admin))]
+@attribute [Authorize(Roles = nameof(Role.Supervisor))]
 @inject IDraftService DraftService
 @inject IUserService UserService
 @implements IDisposable
@@ -70,7 +70,7 @@
                 {
                     <div class="px-4 py-3 text-center">
                         <p class="text-muted">No dispatchers found. Users must have the Dispatcher role to participate.</p>
-                        <a href="/admin" class="btn btn-outline-primary">Go to Admin Panel</a>
+                        <a href="/supervisor" class="btn btn-outline-primary">Go to Supervisor Panel</a>
                     </div>
                 }
                 else

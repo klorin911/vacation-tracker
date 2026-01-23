@@ -60,21 +60,24 @@
                     {
                         <button class="btn btn-sm btn-primary" @onclick="() => MakePick(week)">PICK</button>
                     }
-                    else if (CanQueue(week))
+                    @if (CanQueue(week))
                     {
                         <button class="btn btn-sm btn-outline-secondary" @onclick="() => AddToQueue(week)">+ QUEUE</button>
                     }
-                    else if (IsMyPick(week))
+                    @if (!CanPick(week) && !CanQueue(week))
                     {
-                        <span class="badge bg-success">YOUR PICK</span>
-                        @if (CanUndoPick(week))
+                        if (IsMyPick(week))
                         {
-                            <button class="btn btn-sm btn-outline-danger" @onclick="() => UndoPick(week)">UNDO</button>
+                            <span class="badge bg-success">YOUR PICK</span>
+                            if (CanUndoPick(week))
+                            {
+                                <button class="btn btn-sm btn-outline-danger" @onclick="() => UndoPick(week)">UNDO</button>
+                            }
                         }
-                    }
-                    else
-                    {
-                        <span class="text-muted small">—</span>
+                        else
+                        {
+                            <span class="text-muted small">—</span>
+                        }
                     }
                 </div>
             </div>
@@ -277,7 +280,7 @@
 
     private bool CanQueue(WeekInfo week)
     {
-        return !IsMyTurn && week.Taken < week.Total && !IsMyPick(week);
+        return week.Taken < week.Total && !IsMyPick(week);
     }
 
     private bool IsMyPick(WeekInfo week)

@@ -19,48 +19,61 @@
             </div>
 
             <div class="draft-strip__items">
-                <div class="draft-strip__item is-current">
-                    <div class="draft-strip__label">On the clock</div>
-                    <div class="draft-strip__name">@(_currentUserPicking?.Name ?? "TBD")</div>
-                    <div class="draft-strip__sub">
-                        @if (!_session.IsPaused && _timeLeft.HasValue)
-                        {
-                            <span class="draft-strip__timer @(_timeLeft.Value.TotalSeconds < 60 ? "is-urgent" : "")">
-                                @_timeLeft.Value.ToString(@"m\:ss")
-                            </span>
-                        }
-                        else
-                        {
-                            <span class="draft-strip__muted">Timer paused</span>
-                        }
+                @for (int i = 0; i < _upcomingQueue.Count; i++)
+                {
+                    var dispatcher = _upcomingQueue[i];
+                    var isCurrent = i == 0;
+                    var isNext = i == 1;
+                    var isMe = dispatcher.Id == _loggedInUser?.Id;
+                    
+                    <div class="draft-strip__item @(isCurrent ? "is-current" : "") @(isMe ? "is-me" : "")">
+                        <div class="draft-strip__label">
+                            @(isCurrent ? "On the clock" : isNext ? "Up next" : $"Upcoming")
+                        </div>
+                        <div class="draft-strip__name">@dispatcher.Name</div>
+                        <div class="draft-strip__sub">
+                            @if (isCurrent)
+                            {
+                                @if (!_session.IsPaused && _timeLeft.HasValue)
+                                {
+                                    <span class="draft-strip__timer @(_timeLeft.Value.TotalSeconds < 60 ? "is-urgent" : "")">
+                                        @_timeLeft.Value.ToString(@"m\:ss")
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="draft-strip__muted">Timer paused</span>
+                                }
+                            }
+                            else if (isNext)
+                            {
+                                <span class="draft-strip__muted">On deck</span>
+                            }
+                            else
+                            {
+                                <span class="draft-strip__muted">Position @(((_upcomingQueueIndices[i]) % _totalDispatchers) + 1)</span>
+                            }
+                        </div>
                     </div>
-                </div>
+                }
+            </div>
 
-                <div class="draft-strip__item">
-                    <div class="draft-strip__label">Up next</div>
-                    <div class="draft-strip__name">@(_nextUser?.Name ?? "TBD")</div>
-                    <div class="draft-strip__sub">
-                        <span class="draft-strip__muted">On deck</span>
-                    </div>
-                </div>
-
-                <div class="draft-strip__item is-me @(_isMyTurn ? "is-active" : "")">
-                    <div class="draft-strip__label">Your spot</div>
-                    <div class="draft-strip__name">@(_loggedInUser?.Name ?? "You")</div>
-                    <div class="draft-strip__sub">
-                        @if (_totalDispatchers > 0 && _myIndex >= 0)
-                        {
-                            <span class="draft-strip__muted">Position #@(_myIndex + 1) of @_totalDispatchers</span>
-                        }
-                        @if (!_isMyTurn && _turnsUntilMe > 0)
-                        {
-                            <span class="draft-strip__muted">@_turnsUntilMe picks away</span>
-                        }
-                        else if (_isMyTurn)
-                        {
-                            <span class="draft-strip__pill">Your pick now</span>
-                        }
-                    </div>
+            <div class="draft-strip__item is-your-spot">
+                <div class="draft-strip__label">Your spot</div>
+                <div class="draft-strip__name">@(_loggedInUser?.Name ?? "You")</div>
+                <div class="draft-strip__sub">
+                    @if (_totalDispatchers > 0 && _myIndex >= 0)
+                    {
+                        <span class="draft-strip__muted">Position #@(_myIndex + 1) of @_totalDispatchers</span>
+                    }
+                    @if (!_isMyTurn && _turnsUntilMe > 0)
+                    {
+                        <span class="draft-strip__muted">@_turnsUntilMe picks away</span>
+                    }
+                    else if (_isMyTurn)
+                    {
+                        <span class="draft-strip__pill">Your pick now</span>
+                    }
                 </div>
             </div>
         </div>
@@ -69,31 +82,51 @@
 
 <style>
     .draft-tracker {
-        background: linear-gradient(90deg, #1f3d1f 0%, #2e6b2e 45%, #1f3d1f 100%);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+        background: var(--surface-2);
+        border-bottom: 1px solid var(--border-default);
         box-shadow: var(--shadow-md);
-        color: #f8fafc;
-        position: sticky;
-        top: 0;
-        z-index: 1050;
+        color: var(--ink-900);
+        position: relative;
+        z-index: 10;
+        transition: background-color 0.3s ease, border-color 0.3s ease;
     }
     .draft-tracker.my-turn {
-        background: linear-gradient(90deg, #1f4f25 0%, #3d8b3d 45%, #1f4f25 100%);
-        border-bottom-color: rgba(250, 204, 21, 0.6);
+        background: var(--accent-100);
+        border-bottom-color: var(--accent-primary);
     }
     .draft-strip {
         display: flex;
         align-items: center;
-        justify-content: space-between;
         gap: 0.75rem;
         padding: 0.4rem 0.85rem;
-        flex-wrap: wrap;
+        min-width: 0;
+        position: relative;
     }
+
+    /* Sticky 'Your Spot' */
+    .draft-strip__item.is-your-spot {
+        position: sticky;
+        right: 0;
+        z-index: 20;
+        background: var(--surface-2);
+        border: 1px solid var(--border-default);
+        border-left: 2px solid var(--border-strong);
+        box-shadow: -10px 0 20px -5px rgba(0, 0, 0, 0.05);
+        flex-shrink: 0;
+    }
+
+    .draft-tracker.my-turn .draft-strip__item.is-your-spot {
+        background: var(--surface-2);
+        border-color: var(--accent-primary);
+        box-shadow: -10px 0 20px -5px rgba(37, 99, 235, 0.15);
+    }
+
     .draft-strip__meta {
         display: flex;
         align-items: center;
         gap: 0.5rem;
         min-width: 140px;
+        flex-shrink: 0;
     }
     .draft-strip__badge {
         font-size: 0.6rem;
@@ -101,48 +134,98 @@
         text-transform: uppercase;
         padding: 0.15rem 0.4rem;
         border-radius: 999px;
-        border: 1px solid rgba(255, 255, 255, 0.35);
-        background: rgba(0, 0, 0, 0.2);
+        border: 1px solid var(--border-default);
+        background: var(--surface-1);
+        color: var(--ink-700);
+        font-weight: 600;
     }
     .draft-strip__badge.is-live {
-        background: rgba(34, 197, 94, 0.25);
+        background: var(--success-soft);
+        color: var(--success-ink);
+        border-color: transparent;
     }
     .draft-strip__badge.is-paused {
-        background: rgba(251, 191, 36, 0.25);
+        background: #fffbeb; /* light amber bg */
+        color: var(--warning-ink);
+        border-color: transparent;
     }
     .draft-strip__round {
         font-weight: 700;
         font-size: 0.85rem;
+        color: var(--ink-900);
     }
+    
+    /* Layout & Scroll */
     .draft-strip__items {
         display: flex;
         gap: 0.6rem;
         flex: 1;
-        flex-wrap: wrap;
-        justify-content: flex-start;
-        min-width: 220px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        align-items: stretch;
+        padding-bottom: 2px;
+        padding-right: 2rem; /* Buffer for sticky card shadow */
+        scrollbar-width: none; /* Firefox */
+        -ms-overflow-style: none; /* IE/Edge */
     }
+
+    @@media (max-width: 900px) {
+        .draft-strip {
+            gap: 0.5rem;
+            padding: 0.3rem 0.5rem;
+        }
+        .draft-strip__meta {
+            min-width: 120px;
+        }
+        .draft-strip__item {
+            width: 180px;
+            min-width: 180px;
+        }
+        .draft-strip__item.is-your-spot {
+            right: 0.5rem;
+        }
+    }
+    .draft-strip__items::-webkit-scrollbar {
+        display: none;
+    }
+
     .draft-strip__item {
-        background: rgba(0, 0, 0, 0.24);
-        border: 1px solid rgba(255, 255, 255, 0.18);
+        background: var(--surface-1);
+        border: 1px solid var(--border-default);
         border-radius: 8px;
         padding: 0.35rem 0.6rem;
         width: 220px;
-        min-width: 0;
+        min-width: 220px;
+        flex-shrink: 0;
+        position: relative;
+        transition: all 0.2s ease;
     }
+
+    /* Status Styles */
     .draft-strip__item.is-current {
-        border-color: rgba(250, 204, 21, 0.6);
-        box-shadow: 0 0 0 1px rgba(250, 204, 21, 0.25) inset;
+        border-color: var(--accent-warning);
+        background: var(--surface-2);
+        box-shadow: 0 0 0 1px var(--accent-warning) inset;
     }
-    .draft-strip__item.is-me.is-active {
-        border-color: rgba(59, 130, 246, 0.75);
-        box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.35) inset;
+    
+    /* 'Me' Highlight */
+    .draft-strip__item.is-me {
+        border-color: var(--accent-primary);
+        background: var(--accent-100);
     }
+    /* Me + Current */
+    .draft-strip__item.is-me.is-current {
+        border-color: var(--accent-warning);
+        background: #fffbeb;
+        box-shadow: 0 0 0 1px var(--accent-warning) inset;
+    }
+
     .draft-strip__label {
         font-size: 0.6rem;
         text-transform: uppercase;
         letter-spacing: 0.08em;
-        color: rgba(248, 250, 252, 0.75);
+        color: var(--ink-500);
+        font-weight: 600;
     }
     .draft-strip__name {
         font-weight: 700;
@@ -150,46 +233,49 @@
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        color: var(--ink-900);
     }
     .draft-strip__sub {
         display: flex;
         gap: 0.4rem;
         flex-wrap: wrap;
         font-size: 0.7rem;
-        color: rgba(248, 250, 252, 0.78);
+        color: var(--ink-500);
     }
     .draft-strip__timer {
         font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
         font-weight: 700;
         padding: 0.05rem 0.35rem;
         border-radius: 6px;
-        background: rgba(15, 23, 42, 0.4);
-        border: 1px solid rgba(255, 255, 255, 0.2);
+        background: var(--surface-3);
+        border: 1px solid var(--border-default);
+        color: var(--ink-700);
     }
     .draft-strip__timer.is-urgent {
-        color: #fee2e2;
-        border-color: rgba(248, 113, 113, 0.6);
-        background: rgba(153, 27, 27, 0.4);
+        color: var(--danger-ink);
+        border-color: var(--danger-border);
+        background: var(--danger-soft);
     }
     .draft-strip__pill {
         padding: 0.05rem 0.35rem;
         border-radius: 999px;
-        background: rgba(59, 130, 246, 0.35);
-        border: 1px solid rgba(59, 130, 246, 0.55);
+        background: var(--accent-primary);
+        color: white;
+        border: 1px solid transparent;
         text-transform: uppercase;
         letter-spacing: 0.08em;
         font-size: 0.55rem;
         font-weight: 700;
     }
     .draft-strip__muted {
-        color: rgba(248, 250, 252, 0.75);
+        color: var(--ink-500);
     }
     .pulse {
         animation: pulse-animation 2s infinite;
     }
     @@keyframes pulse-animation {
         0% { opacity: 1; }
-        50% { opacity: 0.5; }
+        50% { opacity: 0.6; }
         100% { opacity: 1; }
     }
 
@@ -199,16 +285,10 @@
             align-items: stretch;
         }
         .draft-strip__items {
-            justify-content: center;
-        }
-    }
-
-    @@media (max-width: 600px) {
-        .draft-strip__items {
-            justify-content: center;
-        }
-        .draft-strip__item {
+            /* Ensure items remain horizontal for scrolling */
+            flex-direction: row;
             width: 100%;
+            padding-right: 0;
         }
     }
 </style>
@@ -225,6 +305,8 @@
     private System.Threading.Timer? _timer;
     private User? _loggedInUser;
     private int _lastRemainingSeconds = -1;
+    private List<User> _upcomingQueue = new();
+    private List<int> _upcomingQueueIndices = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -260,6 +342,8 @@
         _myIndex = -1;
         _totalDispatchers = 0;
         _lastRemainingSeconds = -1;
+        _upcomingQueue.Clear();
+        _upcomingQueueIndices.Clear();
 
         if (_session != null && _session.IsActive)
         {
@@ -270,6 +354,15 @@
             if (_currentUserPicking != null)
             {
                 var currentIndex = dispatchers.FindIndex(u => u.Id == _currentUserPicking.Id);
+                
+                // Populate upcoming queue
+                for (int i = 0; i < dispatchers.Count; i++)
+                {
+                    var idx = (currentIndex + i) % dispatchers.Count;
+                    _upcomingQueue.Add(dispatchers[idx]);
+                    _upcomingQueueIndices.Add(idx);
+                }
+
                 _nextUser = dispatchers[(currentIndex + 1) % dispatchers.Count];
 
                 if (_loggedInUser != null)

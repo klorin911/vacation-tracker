@@ -1,16 +1,16 @@
-@page "/admin"
+@page "/supervisor"
 @using Microsoft.AspNetCore.Authorization
 @using System.ComponentModel.DataAnnotations
 @using VacationTracker.Data.Entities
 @using VacationTracker.Services
-@attribute [Authorize(Roles = nameof(Role.Admin))]
+@attribute [Authorize(Roles = nameof(Role.Supervisor))]
 @inject IVacationService VacationService
 @inject IUserService UserService
 
 <div class="app-section">
     <div class="app-toolbar">
         <div>
-            <h2 class="page-title mb-1">Admin Panel</h2>
+            <h2 class="page-title mb-1">Supervisor Panel</h2>
             <p class="subtle-text mb-0">Review and manage vacation requests and users.</p>
         </div>
         <div class="app-toolbar__actions">
@@ -41,7 +41,7 @@
                 <table class="table table-hover align-middle mb-0">
                     <thead>
                         <tr>
-                            <th class="ps-4 text-nowrap">Employee</th>
+                            <th class="ps-4 text-nowrap">Dispatcher</th>
                             <th class="text-nowrap">Period</th>
                             <th class="text-nowrap d-none d-md-table-cell">Days</th>
                             <th class="text-nowrap d-none d-sm-table-cell">Type</th>
@@ -97,7 +97,7 @@
                 <table class="table table-hover align-middle mb-0">
                     <thead>
                         <tr>
-                            <th class="ps-4 text-nowrap">Employee</th>
+                            <th class="ps-4 text-nowrap">Dispatcher</th>
                             <th class="text-nowrap">Period</th>
                             <th class="text-nowrap d-none d-sm-table-cell">Type</th>
                             <th class="text-nowrap">Status</th>
@@ -130,31 +130,31 @@
         <div class="table-surface mb-3">
             <div class="px-4 py-3 border-bottom d-flex justify-content-between align-items-center">
                 <div>
-                    <h5 class="mb-0">Admin Profiles</h5>
-                    <p class="subtle-text mb-0">Admins with elevated access.</p>
+                    <h5 class="mb-0">Supervisor Profiles</h5>
+                    <p class="subtle-text mb-0">Supervisors with elevated access.</p>
                 </div>
-                <span class="chip">Admins @_adminUsers.Count</span>
+                <span class="chip">Supervisors @_supervisorUsers.Count</span>
             </div>
             <div class="row g-3 p-4">
-                @if (!_adminUsers.Any())
+                @if (!_supervisorUsers.Any())
                 {
-                    <div class="col-12 text-muted">No admins found.</div>
+                    <div class="col-12 text-muted">No supervisors found.</div>
                 }
-                @foreach (var admin in _adminUsers)
+                @foreach (var supervisor in _supervisorUsers)
                 {
                     <div class="col-12 col-md-6 col-lg-4">
                         <div class="border rounded-3 p-3 h-100">
                             <div class="d-flex align-items-center mb-2">
                                 <div class="avatar-sm bg-dark text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 36px; height: 36px; font-size: 0.85rem;">
-                                    @admin.Name[0]
+                                    @supervisor.Name[0]
                                 </div>
                                 <div>
-                                    <div class="fw-bold">@admin.Name</div>
-                                    <div class="small text-muted">@admin.Email</div>
+                                    <div class="fw-bold">@supervisor.Name</div>
+                                    <div class="small text-muted">@supervisor.Email</div>
                                 </div>
                             </div>
-                            <div class="small text-muted">Role: @admin.Role</div>
-                            <div class="small text-muted">Quota: @admin.WeekQuota weeks, @admin.DayQuota days</div>
+                            <div class="small text-muted">Role: @supervisor.Role</div>
+                            <div class="small text-muted">Quota: @supervisor.WeekQuota weeks, @supervisor.DayQuota days</div>
                         </div>
                     </div>
                 }
@@ -164,7 +164,7 @@
         <div class="table-surface mb-3">
             <div class="px-4 py-3 border-bottom">
                 <h5 class="mb-1">@(_isEditing ? "Edit User" : "Add User")</h5>
-                <p class="subtle-text mb-0">Manage employee and admin accounts.</p>
+                <p class="subtle-text mb-0">Manage dispatcher and supervisor accounts.</p>
             </div>
             <div class="p-4">
                 <EditForm Model="_userForm" OnValidSubmit="SaveUserAsync">
@@ -182,9 +182,8 @@
                         <div class="col-12 col-md-4">
                             <label class="form-label">Role</label>
                             <InputSelect class="form-select" @bind-Value="_userForm.Role">
-                                <option value="@Role.Employee">Employee</option>
-                                <option value="@Role.Admin">Admin</option>
                                 <option value="@Role.Dispatcher">Dispatcher</option>
+                                <option value="@Role.Supervisor">Supervisor</option>
                             </InputSelect>
                         </div>
                         <div class="col-12 col-md-4">
@@ -273,7 +272,7 @@
     private List<VacationRequest> _pendingRequests = new();
     private List<VacationRequest> _historyRequests = new();
     private List<User> _users = new();
-    private List<User> _adminUsers = new();
+    private List<User> _supervisorUsers = new();
     private string _activeTab = "requests";
     private UserFormModel _userForm = new();
     private bool _isEditing;
@@ -311,12 +310,12 @@
     private async Task LoadUsers()
     {
         _users = await UserService.GetUsersAsync();
-        _adminUsers = new List<User>();
+        _supervisorUsers = new List<User>();
         foreach (var user in _users)
         {
-            if (user.Role == Role.Admin)
+            if (user.Role == Role.Supervisor)
             {
-                _adminUsers.Add(user);
+                _supervisorUsers.Add(user);
             }
         }
     }
@@ -421,7 +420,7 @@
     {
         return role switch
         {
-            Role.Admin => "text-bg-dark",
+            Role.Supervisor => "text-bg-dark",
             Role.Dispatcher => "text-bg-primary",
             _ => "text-bg-secondary"
         };
@@ -448,7 +447,7 @@
         [EmailAddress]
         public string Email { get; set; } = string.Empty;
 
-        public Role Role { get; set; } = Role.Employee;
+        public Role Role { get; set; } = Role.Dispatcher;
 
         public int BadgeNumber { get; set; }
 

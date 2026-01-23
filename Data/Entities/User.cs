@@ -13,7 +13,7 @@ public class User
     [Required]
     public string Name { get; set; } = string.Empty;
 
-    public Role Role { get; set; } = Role.Employee;
+    public Role Role { get; set; } = Role.Dispatcher;
 
     public int BadgeNumber { get; set; }
 

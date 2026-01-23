@@ -39,18 +39,18 @@ public static class DbInitializer
             context.Users.AddRange(
                 new User
                 {
-                    Email = "admin@example.com",
-                    Name = "Admin User",
-                    Role = Role.Admin,
+                    Email = "supervisor@example.com",
+                    Name = "Supervisor User",
+                    Role = Role.Supervisor,
                     BadgeNumber = 2,
                     WeekQuota = 5,
                     DayQuota = 5
                 },
                 new User
                 {
-                    Email = "employee@example.com",
-                    Name = "Employee User",
-                    Role = Role.Employee,
+                    Email = "dispatcher@example.com",
+                    Name = "Dispatcher User",
+                    Role = Role.Dispatcher,
                     BadgeNumber = 999,
                     WeekQuota = 5,
                     DayQuota = 5
@@ -74,6 +74,20 @@ public static class DbInitializer
                     DayQuota = 5
                 }
             );
+
+            for (int i = 3; i <= 10; i++)
+            {
+                context.Users.Add(new User
+                {
+                    Email = $"dispatcher{i}@example.com",
+                    Name = $"Dispatcher {i}",
+                    Role = Role.Dispatcher,
+                    BadgeNumber = i * 10,
+                    WeekQuota = 5,
+                    DayQuota = 5
+                });
+            }
+
             context.SaveChanges();
         }
     }
