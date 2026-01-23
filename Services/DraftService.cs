@@ -15,6 +15,7 @@ public interface IDraftService
     Task<bool> ResumeDraftAsync();
     Task<bool> ResetDraftAsync();
     Task<(bool Success, string Message)> MakePickAsync(int userId, DateTime weekStart);
+    Task<(bool Success, string Message)> UndoPickAsync(int userId, DateTime weekStart);
     Task<(bool Success, string Message)> EndTurnAsync(int userId);
     Task<List<DraftQueueItem>> GetUserQueueAsync(int userId);
     Task<bool> AddToQueueAsync(int userId, DateTime weekStart);
@@ -155,6 +156,32 @@ public class DraftService : IDraftService
     public async Task<(bool Success, string Message)> MakePickAsync(int userId, DateTime weekStart)
     {
         return await MakePickInternalAsync(userId, weekStart, allowConsecutivePicks: true);
+    }
+
+    public async Task<(bool Success, string Message)> UndoPickAsync(int userId, DateTime weekStart)
+    {
+        using var context = _contextFactory.CreateDbContext();
+
+        var session = await context.DraftSessions.FirstOrDefaultAsync(s => s.IsActive);
+        if (session == null || session.IsPaused) return (false, "Draft is not active or is paused.");
+        if (session.CurrentUserId != userId) return (false, "It is not your turn.");
+        if (!session.TurnStartTime.HasValue) return (false, "Turn start time is missing.");
+
+        var pick = await GetDraftPickQuery(context, session)
+            .Where(r => r.UserId == userId && r.StartDate.Date == weekStart.Date)
+            .OrderByDescending(r => r.CreatedAt)
+            .FirstOrDefaultAsync();
+
+        if (pick == null) return (false, "Pick not found.");
+        if (pick.CreatedAt < session.TurnStartTime.Value)
+        {
+            return (false, "Only picks from the current turn can be undone.");
+        }
+
+        context.VacationRequests.Remove(pick);
+        await context.SaveChangesAsync();
+        OnDraftUpdated?.Invoke();
+        return (true, "Pick undone.");
     }
 
     public async Task<(bool Success, string Message)> EndTurnAsync(int userId)

@@ -67,6 +67,10 @@
                     else if (IsMyPick(week))
                     {
                         <span class="badge bg-success">YOUR PICK</span>
+                        @if (CanUndoPick(week))
+                        {
+                            <button class="btn btn-sm btn-outline-danger" @onclick="() => UndoPick(week)">UNDO</button>
+                        }
                     }
                     else
                     {
@@ -81,7 +85,7 @@
 <style>
     .draft-week-header {
         display: grid;
-        grid-template-columns: 160px 1fr 120px;
+        grid-template-columns: 160px 1fr 170px;
         align-items: center;
         gap: 1rem;
         padding: 0.5rem 1rem;
@@ -99,7 +103,7 @@
     }
     .draft-week-row {
         display: grid;
-        grid-template-columns: 160px 1fr 120px;
+        grid-template-columns: 160px 1fr 170px;
         align-items: center;
         gap: 1rem;
         padding: 0.6rem 1rem;
@@ -170,6 +174,8 @@
     .draft-week-actions {
         display: flex;
         justify-content: flex-end;
+        align-items: center;
+        gap: 0.5rem;
     }
     .draft-turn-control {
         display: flex;
@@ -216,15 +222,17 @@
             .Select(r => r.StartDate.Date)
             .ToHashSet();
         
-        var year = DateTime.Today.Year;
+        var fiscalStartYear = DateTime.Today.Year;
+        var fiscalStartDate = new DateTime(fiscalStartYear, 7, 1);
+        var fiscalEndDate = new DateTime(fiscalStartYear + 1, 6, 30);
+        var fiscalStartWeek = GetWeekStartMonday(fiscalStartDate);
+        var fiscalEndWeek = GetWeekStartMonday(fiscalEndDate);
+
         _weeks.Clear();
 
-        var current = new DateTime(year, 1, 1);
-        while (current.DayOfWeek != DayOfWeek.Monday) current = current.AddDays(1);
-
-        for (int i = 0; i < 52; i++)
+        var weekNumber = 1;
+        for (var weekStart = fiscalStartWeek; weekStart <= fiscalEndWeek; weekStart = weekStart.AddDays(7))
         {
-            var weekStart = current.AddDays(i * 7);
             var weekEnd = weekStart.AddDays(6);
             var (taken, total) = await VacationService.GetWeekAvailabilityAsync(weekStart);
 
@@ -241,9 +249,17 @@
                 Taken = taken,
                 Total = total,
                 Days = days,
-                WeekNumber = GetIsoWeekNumber(weekStart)
+                WeekNumber = weekNumber
             });
+
+            weekNumber++;
         }
+    }
+
+    private static DateTime GetWeekStartMonday(DateTime date)
+    {
+        var diff = (7 + (date.DayOfWeek - DayOfWeek.Monday)) % 7;
+        return date.Date.AddDays(-diff);
     }
 
     private bool CanPick(WeekInfo week)
@@ -269,6 +285,25 @@
         return _myPickWeekStarts.Contains(week.Start.Date);
     }
 
+    private bool CanUndoPick(WeekInfo week)
+    {
+        if (!IsMyTurn || Session is not { IsActive: true, IsPaused: false } || Session.TurnStartTime == null)
+        {
+            return false;
+        }
+
+        var pick = GetMyWeekPick(week);
+        return pick != null && pick.CreatedAt >= Session.TurnStartTime.Value;
+    }
+
+    private VacationRequest? GetMyWeekPick(WeekInfo week)
+    {
+        return _myPicks.FirstOrDefault(r =>
+            r.Type == RequestType.Vacation &&
+            r.IsWeekBooking &&
+            r.StartDate.Date == week.Start.Date);
+    }
+
     private string GetWeekStatusClass(WeekInfo week)
     {
         if (IsMyPick(week)) return "my-pick";
@@ -280,6 +315,20 @@
     {
         _errorMessage = null;
         var result = await DraftService.MakePickAsync(UserId, week.Start);
+        if (result.Success)
+        {
+            await OnUpdate.InvokeAsync();
+        }
+        else
+        {
+            _errorMessage = result.Message;
+        }
+    }
+
+    private async Task UndoPick(WeekInfo week)
+    {
+        _errorMessage = null;
+        var result = await DraftService.UndoPickAsync(UserId, week.Start);
         if (result.Success)
         {
             await OnUpdate.InvokeAsync();
@@ -309,6 +358,8 @@
         await DraftService.AddToQueueAsync(UserId, week.Start);
         await OnUpdate.InvokeAsync();
     }
+
+
 
     private class WeekInfo
     {
