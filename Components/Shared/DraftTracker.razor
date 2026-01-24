@@ -66,6 +66,10 @@
                     {
                         <span class="draft-strip__muted">Position #@(_myIndex + 1) of @_totalDispatchers</span>
                     }
+                    else if (_loggedInUser?.Role == Role.Dispatcher && _session?.IsActive == true)
+                    {
+                        <span class="badge bg-success">Drafting complete</span>
+                    }
                     @if (!_isMyTurn && _turnsUntilMe > 0)
                     {
                         <span class="draft-strip__muted">@_turnsUntilMe picks away</span>
@@ -347,7 +351,15 @@
 
         if (_session != null && _session.IsActive)
         {
-            var dispatchers = await DraftService.GetDispatcherOrderAsync();
+            var allDispatchers = await DraftService.GetDispatcherOrderAsync();
+            var pickCounts = await DraftService.GetSessionPickCountsAsync(_session.Id);
+
+            var dispatchers = allDispatchers.Where(u => {
+                pickCounts.TryGetValue(u.Id, out var count);
+                var maxPicks = Math.Min(_session.TotalRounds, u.WeekQuota);
+                return count < maxPicks || u.Id == _session.CurrentUserId;
+            }).ToList();
+
             _totalDispatchers = dispatchers.Count;
             _currentUserPicking = dispatchers.FirstOrDefault(u => u.Id == _session.CurrentUserId);
             
@@ -363,7 +375,7 @@
                     _upcomingQueueIndices.Add(idx);
                 }
 
-                _nextUser = dispatchers[(currentIndex + 1) % dispatchers.Count];
+                _nextUser = dispatchers.Count > 1 ? dispatchers[(currentIndex + 1) % dispatchers.Count] : null;
 
                 if (_loggedInUser != null)
                 {

@@ -35,22 +35,28 @@
             <h3>Loading User Data...</h3>
         </div>
     }
-    else if (_user.Role != Role.Dispatcher)
+    else if (_user.Role != Role.Dispatcher && _user.Role != Role.Supervisor)
     {
         <div class="surface-card p-5 text-center">
             <h3>Access Restricted</h3>
             <p class="text-muted">The draft is only available to dispatchers. You are logged in as a @_user.Role.</p>
         </div>
     }
+    else if (_actingUser == null)
+    {
+        <div class="surface-card p-5 text-center">
+            <h3>Loading User Data...</h3>
+        </div>
+    }
     else
     {
         <div class="row g-4">
             <div class="col-lg-9">
-                <DraftBoard UserId="_user.Id" Session="_session" IsMyTurn="_isMyTurn" OnUpdate="HandleUpdate" />
+                <DraftBoard UserId="_actingUser.Id" Session="_session" IsMyTurn="_isMyTurn" OnUpdate="HandleUpdate" />
             </div>
             <div class="col-lg-3">
                 <div class="surface-card p-3 sticky-top" style="top: 100px;">
-                    <DraftQueue @ref="_queueComponent" UserId="_user.Id" />
+                    <DraftQueue @ref="_queueComponent" UserId="_actingUser.Id" />
                 </div>
             </div>
         </div>
@@ -60,8 +66,10 @@
 @code {
     private DraftSession? _session;
     private User? _user;
+    private User? _actingUser;
     private bool _isMyTurn;
     private DraftQueue? _queueComponent;
+    private bool _isSupervisor;
 
     protected override async Task OnInitializedAsync()
     {
@@ -73,6 +81,8 @@
         {
             _user = await UserService.GetUserByEmailAsync(email);
         }
+
+        _isSupervisor = _user?.Role == Role.Supervisor;
 
         await LoadData();
     }
@@ -90,9 +100,22 @@
     private async Task LoadData()
     {
         _session = await DraftService.GetActiveSessionAsync();
+        _actingUser = null;
+        _isMyTurn = false;
+
         if (_session != null && _user != null)
         {
-            _isMyTurn = _session.CurrentUserId == _user.Id;
+            if (_user.Role == Role.Dispatcher)
+            {
+                _actingUser = _user;
+                _isMyTurn = _session.CurrentUserId == _user.Id;
+            }
+            else if (_isSupervisor)
+            {
+                var dispatchers = await DraftService.GetDispatcherOrderAsync();
+                _actingUser = dispatchers.FirstOrDefault(d => d.Id == _session.CurrentUserId);
+                _isMyTurn = _actingUser != null;
+            }
         }
     }
 

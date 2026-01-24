@@ -257,6 +257,12 @@
 
             weekNumber++;
         }
+
+        _weeks = _weeks
+            .Where(week => week.Taken < week.Total)
+            .OrderByDescending(IsWeekAvailableForUser)
+            .ThenBy(week => week.Start)
+            .ToList();
     }
 
     private static DateTime GetWeekStartMonday(DateTime date)
@@ -281,6 +287,11 @@
     private bool CanQueue(WeekInfo week)
     {
         return week.Taken < week.Total && !IsMyPick(week);
+    }
+
+    private bool IsWeekAvailableForUser(WeekInfo week)
+    {
+        return CanPick(week) || CanQueue(week);
     }
 
     private bool IsMyPick(WeekInfo week)

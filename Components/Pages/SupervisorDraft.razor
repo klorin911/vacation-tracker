@@ -93,16 +93,31 @@
                                     <tr class="@(d.Id == _session?.CurrentUserId ? "table-primary" : "")">
                                         <td class="ps-4">@(i + 1)</td>
                                         <td>@d.BadgeNumber</td>
-                                        <td>@d.Name</td>
+                                        <td>
+                                            <div class="fw-bold">@d.Name</div>
+                                            <div class="small text-muted">Quota: @d.WeekQuota weeks</div>
+                                        </td>
                                         <td>@d.Email</td>
                                         <td class="text-end pe-4">
+                                            @{
+                                                _pickCounts.TryGetValue(d.Id, out var count);
+                                                var maxPicks = _session != null ? Math.Min(_session.TotalRounds, d.WeekQuota) : d.WeekQuota;
+                                                var isDone = count >= maxPicks;
+                                            }
                                             @if (d.Id == _session?.CurrentUserId)
                                             {
                                                 <span class="badge bg-primary pulse">PICKING NOW</span>
+                                                <div class="small text-primary mt-1">@count / @maxPicks picks</div>
+                                            }
+                                            else if (isDone && _session != null)
+                                            {
+                                                <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25">COMPLETE</span>
+                                                <div class="small text-muted mt-1">@count / @maxPicks picks</div>
                                             }
                                             else if (_session != null && _session.IsActive)
                                             {
                                                 <span class="text-muted">Waiting</span>
+                                                <div class="small text-muted mt-1">@count / @maxPicks picks</div>
                                             }
                                         </td>
                                     </tr>
@@ -128,6 +143,7 @@
 </style>
 
 @code {
+    private Dictionary<int, int> _pickCounts = new();
     private DraftSession? _session;
     private List<User> _dispatchers = new();
     private DateTime? _scheduledStartLocal;
@@ -151,6 +167,14 @@
     {
         _session = await DraftService.GetLatestSessionAsync();
         _dispatchers = await DraftService.GetDispatcherOrderAsync();
+        if (_session != null)
+        {
+            _pickCounts = await DraftService.GetSessionPickCountsAsync(_session.Id);
+        }
+        else
+        {
+            _pickCounts.Clear();
+        }
     }
 
     private async Task StartDraft()

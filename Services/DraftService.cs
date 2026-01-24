@@ -23,6 +23,7 @@ public interface IDraftService
     Task<bool> MoveQueueItemAsync(int userId, int queueItemId, bool up);
     Task ProcessTurnTimeoutAsync();
     Task ProcessScheduledDraftsAsync();
+    Task<Dictionary<int, int>> GetSessionPickCountsAsync(int sessionId);
 }
 
 public class DraftService : IDraftService
@@ -80,7 +81,7 @@ public class DraftService : IDraftService
                 IsActive = false,
                 ScheduledStartTime = scheduledStartTimeUtc.Value,
                 CurrentRound = 1,
-                TotalRounds = 5
+                TotalRounds = dispatchers.Max(u => u.WeekQuota)
             };
 
             context.DraftSessions.Add(session);
@@ -106,7 +107,7 @@ public class DraftService : IDraftService
         session.CurrentUserId = dispatchers.First().Id;
         session.TurnStartTime = startTimeUtc;
         session.CurrentRound = 1;
-        session.TotalRounds = 5;
+        session.TotalRounds = dispatchers.Max(u => u.WeekQuota);
 
         if (existingSession == null)
         {
@@ -348,25 +349,53 @@ public class DraftService : IDraftService
         await context.SaveChangesAsync();
     }
 
+    public async Task<Dictionary<int, int>> GetSessionPickCountsAsync(int sessionId)
+    {
+        using var context = _contextFactory.CreateDbContext();
+        var session = await context.DraftSessions.FirstOrDefaultAsync(s => s.Id == sessionId);
+        if (session == null) return new Dictionary<int, int>();
+
+        var dispatcherIds = await context.Users
+            .Where(u => u.Role == Role.Dispatcher)
+            .Select(u => u.Id)
+            .ToListAsync();
+
+        return await GetDraftPickCountsAsync(context, session, dispatcherIds);
+    }
+
     public async Task ProcessTurnTimeoutAsync()
     {
         using var context = _contextFactory.CreateDbContext();
         var session = await context.DraftSessions.FirstOrDefaultAsync(s => s.IsActive && !s.IsPaused);
         
         if (session == null || !session.TurnStartTime.HasValue) return;
+        if (!session.CurrentUserId.HasValue) return;
+
+        var currentUserId = session.CurrentUserId.Value;
+        var currentUser = await context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == currentUserId);
+        if (currentUser == null) return;
+
+        var pickCounts = await GetDraftPickCountsAsync(context, session, new List<int> { currentUserId });
+        pickCounts.TryGetValue(currentUserId, out var currentPicks);
+        var maxPicks = Math.Min(session.TotalRounds, currentUser.WeekQuota);
+        if (currentPicks >= maxPicks)
+        {
+            await AdvanceTurnAsync(context, session);
+            OnDraftUpdated?.Invoke();
+            return;
+        }
 
         if (DateTime.UtcNow - session.TurnStartTime.Value > TimeSpan.FromMinutes(5))
         {
-            var userId = session.CurrentUserId!.Value;
             var queue = await context.DraftQueueItems
-                .Where(q => q.UserId == userId)
+                .Where(q => q.UserId == currentUserId)
                 .OrderBy(q => q.QueueOrder)
                 .ToListAsync();
 
             bool pickMade = false;
             foreach (var item in queue)
             {
-                var result = await MakePickInternalAsync(userId, item.WeekStartDate, allowConsecutivePicks: false);
+                var result = await MakePickInternalAsync(currentUserId, item.WeekStartDate, allowConsecutivePicks: false);
                 if (result.Success)
                 {
                     context.DraftQueueItems.Remove(item);
